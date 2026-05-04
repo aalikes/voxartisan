@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Speech Builder{% endblock %}
+{% block content %}
+<div class="builder-layout">
+  <!-- LEFT: Inputs -->
+  <aside class="builder-panel">
+    <h2>Build Your Speech</h2>
+    <form id="speechForm">
+      <label>Topic / Title <span class="req">*</span>
+        <input type="text" id="topic" placeholder="e.g. The Power of Showing Up" required/>
+      </label>
+      <label>Speech Type
+        <select id="speech_type">
+          <option>Icebreaker</option><option>Table Topics</option>
+          <option>Prepared Speech</option><option>Evaluation</option>
+          <option>Humorous Speech</option><option>International Speech Contest</option>
+          <option>Keynote</option><option>Pitch</option>
+        </select>
+      </label>
+      <label>Purpose
+        <select id="purpose">
+          <option value="inspire">Inspire</option>
+          <option value="inform">Inform</option>
+          <option value="persuade">Persuade</option>
+          <option value="entertain">Entertain</option>
+          <option value="motivate">Motivate</option>
+        </select>
+      </label>
+      <label>Audience
+        <input type="text" id="audience" placeholder="e.g. Toastmasters Club, startup founders"/>
+      </label>
+      <label>Duration
+        <select id="duration">
+          <option>1-2 minutes</option><option>2-3 minutes</option>
+          <option selected>5-7 minutes</option><option>7-10 minutes</option>
+          <option>10-15 minutes</option><option>18 minutes (TED style)</option>
+        </select>
+      </label>
+      <label>Tone
+        <select id="tone">
+          <option>Professional</option><option>Conversational</option>
+          <option>Inspirational</option><option>Humorous</option>
+          <option>Storytelling</option><option>Urgent</option>
+        </select>
+      </label>
+      <label>Key Points (optional)
+        <textarea id="key_points" rows="3" placeholder="Bullet points or phrases to include..."></textarea>
+      </label>
+      <button type="submit" class="btn btn-primary btn-full" id="generateBtn">
+        Generate Speech ⚡
+      </button>
+    </form>
+  </aside>
+
+  <!-- RIGHT: Output -->
+  <section class="output-panel">
+    <div class="output-toolbar" id="toolbar" style="display:none">
+      <h3 id="output-title">Your Speech</h3>
+      <div class="toolbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="copyToClipboard()">📋 Copy</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleRefine()">✏️ Refine</button>
+      </div>
+    </div>
+    <div id="output-area" class="output-placeholder">
+      <p>👈 Fill in the form and hit <strong>Generate Speech</strong> to get started.</p>
+    </div>
+    <!-- Refine panel -->
+    <div id="refine-panel" class="refine-panel" style="display:none">
+      <textarea id="refine-input" rows="2" placeholder='e.g. "Make the opening funnier", "Add a personal story", "Cut it to 5 minutes"'></textarea>
+      <button class="btn btn-primary" onclick="refineSpeech()">Refine ↺</button>
+    </div>
+  </section>
+</div>
+
+<script>
+let currentSpeech = "";
+
+document.getElementById("speechForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("generateBtn");
+  btn.textContent = "Generating...";
+  btn.disabled = true;
+  document.getElementById("output-area").innerHTML = '<div class="spinner"></div>';
+
+  const payload = {
+    topic: document.getElementById("topic").value,
+    speech_type: document.getElementById("speech_type").value,
+    purpose: document.getElementById("purpose").value,
+    audience: document.getElementById("audience").value,
+    duration: document.getElementById("duration").value,
+    tone: document.getElementById("tone").value,
+    key_points: document.getElementById("key_points").value,
+  };
+
+  try {
+    const res = await fetch("/generate", { method: "POST",
+      headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    currentSpeech = data.speech;
+    displaySpeech(data.speech);
+  } catch (err) {
+    document.getElementById("output-area").innerHTML = `<p class="error">Error: ${err.message}</p>`;
+  } finally {
+    btn.textContent = "Generate Speech ⚡";
+    btn.disabled = false;
+  }
+});
+
+async function refineSpeech() {
+  const instruction = document.getElementById("refine-input").value.trim();
+  if (!instruction || !currentSpeech) return;
+  document.getElementById("output-area").innerHTML = '<div class="spinner"></div>';
+  try {
+    const res = await fetch("/refine", { method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ speech: currentSpeech, instruction }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    currentSpeech = data.speech;
+    displaySpeech(data.speech);
+    document.getElementById("refine-input").value = "";
+  } catch (err) {
+    alert("Refine error: " + err.message);
+  }
+}
+
+function displaySpeech(text) {
+  document.getElementById("toolbar").style.display = "flex";
+  document.getElementById("output-area").innerHTML =
+    `<div class="speech-text">${text.replace(/\n/g, "<br/>")}</div>`;
+}
+
+function copyToClipboard() {
+  navigator.clipboard.writeText(currentSpeech).then(() => alert("Copied!"));
+}
+
+function toggleRefine() {
+  const p = document.getElementById("refine-panel");
+  p.style.display = p.style.display === "none" ? "block" : "none";
+}
+</script>
+{% endblock %}

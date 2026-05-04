@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Speech Builder — AI-Powered Toastmasters Coach{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-content">
+    <h1>Build Speeches That <span class="accent">Win Rooms</span></h1>
+    <p class="hero-sub">AI-powered speech generation for Toastmasters, presentations, and public speaking. Craft your message in seconds — then make it yours.</p>
+    {% if user %}
+      <a href="/builder" class="btn btn-primary btn-lg">Open Builder →</a>
+    {% else %}
+      <a href="/login" class="btn btn-primary btn-lg">Get Started Free →</a>
+    {% endif %}
+  </div>
+  <div class="hero-features">
+    <div class="feature-card">
+      <span class="feat-icon">⚡</span>
+      <h3>Instant Drafts</h3>
+      <p>Full speech in under 10 seconds — hook, body, close, speaker notes.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feat-icon">🎯</span>
+      <h3>Purpose-Built</h3>
+      <p>Icebreaker, Table Topics, Evaluation, Contest — tuned for every format.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feat-icon">🔄</span>
+      <h3>Refine On Demand</h3>
+      <p>Iterate with natural language: "make it funnier", "add a story", "cut 90 seconds".</p>
+    </div>
+  </div>
+</section>
+{% endblock %}
