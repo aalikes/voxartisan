@@ -27,6 +27,9 @@ REDIRECT_URI = os.environ.get("REDIRECT_URI", "http://localhost:5000/callback")
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # Dev only — remove in prod HTTPS
 
+LOCAL_MODE = os.environ.get("LOCAL_MODE", "").lower() == "true"
+LOCAL_USER = {"name": "Shah", "email": "aalikes@gmail.com", "picture": ""}
+
 CLIENT_SECRETS = {
     "web": {
         "client_id": GOOGLE_CLIENT_ID,
@@ -83,6 +86,13 @@ def logout():
 
 # ── Main routes ────────────────────────────────────────────────────────────────
 
+@app.before_request
+def auto_login_local():
+    """In LOCAL_MODE, inject a default user so OAuth is never needed."""
+    if LOCAL_MODE and not session.get("user"):
+        session["user"] = LOCAL_USER
+
+
 @app.route("/")
 def index():
     user = session.get("user")
@@ -102,38 +112,117 @@ def generate():
         return jsonify({"error": "Not authenticated"}), 401
 
     data = request.get_json()
-    topic        = data.get("topic", "")
-    purpose      = data.get("purpose", "inform")
-    audience     = data.get("audience", "general")
-    duration     = data.get("duration", "5-7 minutes")
-    tone         = data.get("tone", "professional")
-    key_points   = data.get("key_points", "")
-    speech_type  = data.get("speech_type", "Icebreaker")
+    topic               = data.get("topic", "")
+    pathway             = data.get("pathway", "")
+    project             = data.get("project", "")
+    story_line          = data.get("story_line", "")
+    central_message     = data.get("central_message", "")
+    intro_style         = data.get("intro_style", "Bold Statement")
+    closing_technique   = data.get("closing_technique", "Callback to Opening")
+    project_objectives  = data.get("project_objectives", "")
+    audience            = data.get("audience", "general")
+    duration            = data.get("duration", "5-7 minutes")
+    tone                = data.get("tone", "professional")
+    key_points          = data.get("key_points", "")
 
-    prompt = f"""You are an expert Toastmasters speech coach. Build a complete, competition-ready speech.
+    pathway_line        = f"- Toastmasters Pathway: {pathway}" if pathway and pathway != "— Select a Pathway —" else ""
+    project_line        = f"- Project: {project}" if project else ""
+    story_line_text     = f"\nNarrative / Story Line to weave in:\n{story_line}" if story_line else ""
+    central_msg_line    = f"- Central Message & CTA: {central_message}" if central_message else ""
+    closing_line        = f"- Closing Technique: {closing_technique}"
+    objectives_text     = f"\nProject Objectives to satisfy:\n{project_objectives}" if project_objectives else ""
+    key_points_line     = f"- Key Points: {key_points}" if key_points else ""
 
-Speech Details:
-- Title/Topic: {topic}
-- Speech Type: {speech_type}
-- Purpose: {purpose}
+    prompt = f"""You are VoxArtisan — an elite Toastmasters speech architect and coach. Craft a complete, performance-ready speech.
+
+Speech Brief:
+{pathway_line}
+{project_line}
+- Subject Matter: {topic}
 - Audience: {audience}
 - Duration: {duration}
 - Tone: {tone}
-- Key Points to Include: {key_points}
+- Opening Technique: {intro_style}
+{central_msg_line}
+{closing_line}
+{key_points_line}
+{story_line_text}
+{objectives_text}
 
-Deliver the full speech text with:
-1. A powerful HOOK opening (first 30 seconds)
-2. Clear body with smooth transitions
-3. Memorable closing call-to-action
-4. Word count estimate
-5. Speaker notes in [brackets] for emphasis, pauses, and gestures
+Deliver the full speech with:
+1. A powerful HOOK opening using the "{intro_style}" technique — nail it in the first 30 seconds
+2. Structured body with smooth transitions that supports the central message
+3. Closing using the "{closing_technique}" technique — memorable, with a clear call-to-action
+4. [Speaker notes in brackets] for emphasis, pauses, gestures, and vocal variety
+5. Word count estimate at the end
 
-Format as: TITLE | HOOK | BODY | CLOSE | SPEAKER NOTES | WORD COUNT"""
+Format sections clearly: TITLE → HOOK → BODY → CLOSE → SPEAKER NOTES → WORD COUNT"""
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         response = model.generate_content(prompt)
         return jsonify({"speech": response.text})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/suggest", methods=["POST"])
+def suggest():
+    if not session.get("user"):
+        return jsonify({"error": "Not authenticated"}), 401
+
+    data = request.get_json()
+    topic               = data.get("topic", "")
+    pathway             = data.get("pathway", "")
+    project             = data.get("project", "")
+    tone                = data.get("tone", "")
+    story_line          = data.get("story_line", "")
+    central_message     = data.get("central_message", "")
+    intro_style         = data.get("intro_style", "Bold Statement")
+    closing_technique   = data.get("closing_technique", "Callback to Opening")
+    duration            = data.get("duration", "5-7 minutes")
+
+    context = f"Topic: {topic} | Pathway: {pathway} | Project: {project} | Tone: {tone} | Duration: {duration} | Preferred Intro Style: {intro_style} | Closing Technique: {closing_technique}"
+    if central_message:
+        context += f" | Central Message: {central_message}"
+    if story_line:
+        context += f" | Story: {story_line}"
+
+    prompt = f"""You are VoxArtisan, an elite Toastmasters speech coach.
+
+Based on this speech brief:
+{context}
+
+Return ONLY valid JSON (no markdown, no explanation) in this exact structure:
+{{
+  "titles": [
+    "Title Option 1",
+    "Title Option 2",
+    "Title Option 3",
+    "Title Option 4",
+    "Title Option 5"
+  ],
+  "intros": [
+    "Full opening using the {intro_style} technique — primary recommendation.",
+    "Full opening using a different technique as an alternative — complete, speakable.",
+    "Full opening using a third technique — bold, unexpected, or story-driven."
+  ]
+}}
+
+Titles: punchy, memorable, fit the tone and subject.
+Intros: complete speakable sentences (2-3 sentences max), first intro MUST use the "{intro_style}" technique, the other two use varied alternatives."""
+
+    try:
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        # Strip markdown code fences if Gemini wraps in ```json ... ```
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        result = json.loads(text.strip())
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -158,7 +247,7 @@ REFINEMENT INSTRUCTION:
 Return the improved full speech text only."""
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         response = model.generate_content(prompt)
         return jsonify({"speech": response.text})
     except Exception as e:

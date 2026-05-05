@@ -1,41 +1,100 @@
 {% extends "base.html" %}
-{% block title %}Speech Builder{% endblock %}
+{% block title %}VoxArtisan — Build Your Speech{% endblock %}
 {% block content %}
 <div class="builder-layout">
   <!-- LEFT: Inputs -->
   <aside class="builder-panel">
-    <h2>Build Your Speech</h2>
+    <h2>Craft Your Speech</h2>
     <form id="speechForm">
-      <label>Topic / Title <span class="req">*</span>
+
+      <label>Pathway
+        <select id="pathway" onchange="updateProjects()">
+          <option value="">— Select a Pathway —</option>
+          <option>Presentation Mastery</option>
+          <option>Visionary Communication</option>
+          <option>Motivational Strategies</option>
+          <option>Innovative Planning</option>
+          <option>Persuasive Influence</option>
+          <option>Dynamic Leadership</option>
+          <option>Strategic Relationships</option>
+          <option>Team Collaboration</option>
+          <option>Leadership Development</option>
+          <option>Effective Coaching</option>
+          <option>Engaging Humor</option>
+          <option>N/A — General Speech</option>
+        </select>
+      </label>
+
+      <label>Project
+        <select id="project" onchange="updateDuration()">
+          <option value="">— Select a Pathway first —</option>
+        </select>
+      </label>
+
+      <label>Subject Matter <span class="req">*</span>
         <input type="text" id="topic" placeholder="e.g. The Power of Showing Up" required/>
       </label>
-      <label>Speech Type
-        <select id="speech_type">
-          <option>Icebreaker</option><option>Table Topics</option>
-          <option>Prepared Speech</option><option>Evaluation</option>
-          <option>Humorous Speech</option><option>International Speech Contest</option>
-          <option>Keynote</option><option>Pitch</option>
-        </select>
+
+      <label>Story Line (optional)
+        <textarea id="story_line" rows="3" placeholder="Sketch your narrative arc — opening moment, key turning point, or personal story you want woven in..."></textarea>
       </label>
-      <label>Purpose
-        <select id="purpose">
-          <option value="inspire">Inspire</option>
-          <option value="inform">Inform</option>
-          <option value="persuade">Persuade</option>
-          <option value="entertain">Entertain</option>
-          <option value="motivate">Motivate</option>
-        </select>
+
+      <label>Central Message &amp; Call to Action <span class="req">*</span>
+        <textarea id="central_message" rows="2" placeholder="The one idea you want the audience to leave with — and what you want them to do, think, or feel." required></textarea>
       </label>
+
+      <div id="project-objectives-box" class="objectives-box" style="display:none">
+        <p class="objectives-label">📋 Project Objectives</p>
+        <ul id="objectives-list" class="objectives-list"></ul>
+        <input type="hidden" id="project_objectives" value=""/>
+      </div>
+
+      <div class="field-group">
+        <p class="field-label">What kind of intro do you want?</p>
+        <div class="intro-grid" id="intro-grid">
+          <button type="button" class="intro-chip active" data-value="Bold Statement"     onclick="selectIntro(this)">⚡ Bold Statement</button>
+          <button type="button" class="intro-chip"        data-value="Rhetorical Question" onclick="selectIntro(this)">❓ Rhetorical Question</button>
+          <button type="button" class="intro-chip"        data-value="Personal Story"     onclick="selectIntro(this)">📖 Personal Story</button>
+          <button type="button" class="intro-chip"        data-value="Shocking Statistic" onclick="selectIntro(this)">📊 Shocking Statistic</button>
+          <button type="button" class="intro-chip"        data-value="Powerful Quote"     onclick="selectIntro(this)">💬 Powerful Quote</button>
+          <button type="button" class="intro-chip"        data-value="Humor / Wit"        onclick="selectIntro(this)">😄 Humor / Wit</button>
+          <button type="button" class="intro-chip"        data-value="Vivid Visualization" onclick="selectIntro(this)">🎬 Vivid Visualization</button>
+          <button type="button" class="intro-chip"        data-value="Contrast / Paradox" onclick="selectIntro(this)">⚖️ Contrast / Paradox</button>
+        </div>
+        <input type="hidden" id="intro_style" value="Bold Statement"/>
+      </div>
+
+      <div class="field-group">
+        <p class="field-label">How do you want to close?</p>
+        <div class="intro-grid">
+          <button type="button" class="close-chip active" data-value="Callback to Opening"    onclick="selectClose(this)">🔄 Callback to Opening</button>
+          <button type="button" class="close-chip"        data-value="Challenge the Audience" onclick="selectClose(this)">🎯 Challenge the Audience</button>
+          <button type="button" class="close-chip"        data-value="Inspirational Quote"    onclick="selectClose(this)">💬 Inspirational Quote</button>
+          <button type="button" class="close-chip"        data-value="Story Resolution"       onclick="selectClose(this)">📖 Story Resolution</button>
+          <button type="button" class="close-chip"        data-value="Vision of the Future"   onclick="selectClose(this)">🌟 Vision of the Future</button>
+          <button type="button" class="close-chip"        data-value="Humor / Punchline"      onclick="selectClose(this)">😄 Humor / Punchline</button>
+          <button type="button" class="close-chip"        data-value="Moment of Silence"      onclick="selectClose(this)">🤫 Moment of Silence</button>
+          <button type="button" class="close-chip"        data-value="Rhetorical Question"    onclick="selectClose(this)">❓ Rhetorical Question</button>
+        </div>
+        <input type="hidden" id="closing_technique" value="Callback to Opening"/>
+      </div>
+
       <label>Audience
         <input type="text" id="audience" placeholder="e.g. Toastmasters Club, startup founders"/>
       </label>
+
       <label>Duration
         <select id="duration">
-          <option>1-2 minutes</option><option>2-3 minutes</option>
-          <option selected>5-7 minutes</option><option>7-10 minutes</option>
-          <option>10-15 minutes</option><option>18 minutes (TED style)</option>
+          <option>1-2 minutes</option>
+          <option>2-3 minutes</option>
+          <option>4-6 minutes</option>
+          <option selected>5-7 minutes</option>
+          <option>7-10 minutes</option>
+          <option>10-15 minutes</option>
+          <option>18-22 minutes (keynote)</option>
         </select>
       </label>
+
       <label>Tone
         <select id="tone">
           <option>Professional</option><option>Conversational</option>
@@ -43,9 +102,11 @@
           <option>Storytelling</option><option>Urgent</option>
         </select>
       </label>
+
       <label>Key Points (optional)
         <textarea id="key_points" rows="3" placeholder="Bullet points or phrases to include..."></textarea>
       </label>
+
       <button type="submit" class="btn btn-primary btn-full" id="generateBtn">
         Generate Speech ⚡
       </button>
@@ -64,15 +125,488 @@
     <div id="output-area" class="output-placeholder">
       <p>👈 Fill in the form and hit <strong>Generate Speech</strong> to get started.</p>
     </div>
-    <!-- Refine panel -->
     <div id="refine-panel" class="refine-panel" style="display:none">
       <textarea id="refine-input" rows="2" placeholder='e.g. "Make the opening funnier", "Add a personal story", "Cut it to 5 minutes"'></textarea>
       <button class="btn btn-primary" onclick="refineSpeech()">Refine ↺</button>
+    </div>
+
+    <!-- Titles & Intros panel -->
+    <div id="suggest-panel" class="suggest-panel" style="display:none">
+      <div class="suggest-header">
+        <span class="suggest-icon">💡</span>
+        <h4>Suggested Titles &amp; Intros</h4>
+      </div>
+      <div class="suggest-columns">
+        <div class="suggest-col">
+          <p class="suggest-label">Titles</p>
+          <ul id="titles-list" class="suggest-list"></ul>
+        </div>
+        <div class="suggest-col">
+          <p class="suggest-label">Opening Lines</p>
+          <ul id="intros-list" class="suggest-list"></ul>
+        </div>
+      </div>
     </div>
   </section>
 </div>
 
 <script>
+// ── Intro & Close style selectors ────────────────────────────────────────────
+function selectIntro(btn) {
+  document.querySelectorAll(".intro-chip").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("intro_style").value = btn.dataset.value;
+}
+function selectClose(btn) {
+  document.querySelectorAll(".close-chip").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("closing_technique").value = btn.dataset.value;
+}
+
+// ── Project Objectives map ───────────────────────────────────────────────────
+const PROJECT_OBJECTIVES = {
+  "Level 1 — Icebreaker": [
+    "Introduce yourself to your fellow club members",
+    "Structure the speech with a clear opening, body, and conclusion",
+    "Deliver within the 4–6 minute time requirement"
+  ],
+  "Level 1 — Writing a Speech with Purpose": [
+    "Select an outline that organizes the speech effectively",
+    "Write a well-organized speech from that outline",
+    "Use appropriate vocal variety and eye contact throughout"
+  ],
+  "Level 2 — Understanding Your Communication Style": [
+    "Identify your personal communication style",
+    "Explain how your style affects others",
+    "Reflect on how to adapt your style for different situations"
+  ],
+  "Level 2 — Effective Body Language": [
+    "Use purposeful gestures and movement to reinforce your message",
+    "Maintain consistent eye contact with the audience",
+    "Demonstrate facial expressions that match the emotional content"
+  ],
+  "Level 2 — Introduction to Toastmasters Mentoring": [
+    "Discuss the value and impact of mentoring",
+    "Share specific lessons from your mentoring experience",
+    "Inspire others to seek or provide mentorship"
+  ],
+  "Level 3 — Persuasive Influence": [
+    "Present a clear, well-supported argument or call to action",
+    "Use persuasive techniques: evidence, emotion, and credibility",
+    "Anticipate and address counterarguments"
+  ],
+  "Level 3 — Using Presentation Software": [
+    "Use visual aids that enhance — not distract from — the message",
+    "Maintain audience engagement while operating the software",
+    "Ensure slides are clear, readable, and purposeful"
+  ],
+  "Level 3 — Connect with Storytelling": [
+    "Build an emotional connection through a compelling narrative",
+    "Use story structure: setup, conflict, resolution",
+    "Make the story relevant to the audience's experience"
+  ],
+  "Level 3 — Deliver Social Speeches": [
+    "Deliver a toast, eulogy, or roast appropriate to the occasion",
+    "Connect emotionally with the audience",
+    "Keep content appropriate, warm, and memorable"
+  ],
+  "Level 3 — Manage Projects Successfully": [
+    "Present key stages and outcomes of a managed project",
+    "Demonstrate clear planning and problem-solving",
+    "Show measurable results or lessons learned"
+  ],
+  "Level 4 — Building a Social Media Presence": [
+    "Present a strategic social media plan or results",
+    "Use data or examples to support your approach",
+    "Connect online strategy to real-world goals"
+  ],
+  "Level 4 — Managing a Difficult Audience": [
+    "Demonstrate techniques for handling challenging audience behavior",
+    "Maintain composure and authority under pressure",
+    "Show adaptability in your delivery"
+  ],
+  "Level 4 — Leading in Your Volunteer Organization": [
+    "Describe a leadership initiative within a volunteer role",
+    "Highlight lessons learned and impact created",
+    "Inspire others to take on leadership responsibilities"
+  ],
+  "Level 4 — Create a Podcast": [
+    "Deliver a focused, engaging audio-style segment",
+    "Use vocal variety as the primary engagement tool",
+    "Structure content for a listening (not watching) audience"
+  ],
+  "Level 4 — Motivate Others": [
+    "Use proven motivational techniques throughout the speech",
+    "Connect the message to the audience's personal goals or values",
+    "Drive the audience toward a specific positive action"
+  ],
+  "Level 4 — Manage Change": [
+    "Address resistance to change with empathy and clarity",
+    "Present a roadmap or framework for navigating change",
+    "Inspire confidence in the outcome"
+  ],
+  "Level 4 — The Power of Persuasion": [
+    "Build a multi-layered persuasive argument",
+    "Use ethos, pathos, and logos effectively",
+    "Counter objections before they arise"
+  ],
+  "Level 4 — Negotiate the Best Outcome": [
+    "Demonstrate negotiation principles through a real or hypothetical scenario",
+    "Show how to reach mutually beneficial outcomes",
+    "Keep the audience engaged through the negotiation narrative"
+  ],
+  "Level 4 — Coach and Mentor": [
+    "Share a meaningful coaching or mentoring experience",
+    "Demonstrate specific coaching techniques used",
+    "Show the measurable impact on the person coached"
+  ],
+  "Level 4 — Using Humor Effectively": [
+    "Integrate humor naturally — not forced — throughout the speech",
+    "Craft jokes and observations appropriate to the audience",
+    "Use timing, callback, and setup-punchline structure"
+  ],
+  "Level 5 — Prepare to Speak Professionally": [
+    "Deliver a keynote-level speech of 18–22 minutes",
+    "Demonstrate masterful vocal variety, pacing, and stage presence",
+    "Leave the audience with a transformative idea or call to action"
+  ],
+  "Level 5 — High Performance Leadership": [
+    "Lead and present outcomes of a significant initiative",
+    "Demonstrate measurable leadership impact",
+    "Inspire others to pursue high-performance leadership"
+  ],
+  "Level 5 — Ethical Leadership": [
+    "Address an ethical challenge or principle with depth",
+    "Model ethical decision-making through narrative or example",
+    "Motivate the audience to apply ethical principles in their own lives"
+  ],
+  "Level 5 — Engaging Humor": [
+    "Sustain humor as the primary vehicle for the entire speech",
+    "Use comedic timing, callbacks, and character voices",
+    "Keep the audience laughing while delivering a real message"
+  ],
+  "Level 5 — Reflect on Your Path": [
+    "Reflect authentically on your Toastmasters journey",
+    "Share key turning points and lessons learned",
+    "Inspire the audience to continue their own growth"
+  ],
+};
+
+// ── Pathway → Projects map ────────────────────────────────────────────────────
+const PATHWAY_PROJECTS = {
+  "Presentation Mastery": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Persuasive Influence",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 4 — Leading in Your Volunteer Organization",
+    "Level 5 — Prepare to Speak Professionally",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "Visionary Communication": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Persuasive Influence",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — Create a Podcast",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 5 — Prepare to Speak Professionally",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "Motivational Strategies": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Deliver Social Speeches",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Motivate Others",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 5 — Prepare to Speak Professionally",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "Innovative Planning": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Manage Projects Successfully",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Manage Change",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 5 — High Performance Leadership",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "Persuasive Influence": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Persuasive Influence",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — The Power of Persuasion",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 5 — Ethical Leadership",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "Dynamic Leadership": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Persuasive Influence",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — Leading in Your Volunteer Organization",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 5 — High Performance Leadership",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "Strategic Relationships": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Persuasive Influence",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — Negotiate the Best Outcome",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 5 — Leading in Your Volunteer Organization",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "Team Collaboration": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Deliver Social Speeches",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Manage Change",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 5 — High Performance Leadership",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "Leadership Development": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Persuasive Influence",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — Leading in Your Volunteer Organization",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 5 — High Performance Leadership",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "Effective Coaching": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Deliver Social Speeches",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — Coach and Mentor",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 5 — Leading in Your Volunteer Organization",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "Engaging Humor": [
+    "Level 1 — Icebreaker",
+    "Level 1 — Writing a Speech with Purpose",
+    "Level 2 — Understanding Your Communication Style",
+    "Level 2 — Effective Body Language",
+    "Level 2 — Introduction to Toastmasters Mentoring",
+    "Level 3 — Deliver Social Speeches",
+    "Level 3 — Using Presentation Software",
+    "Level 3 — Connect with Storytelling",
+    "Level 4 — Using Humor Effectively",
+    "Level 4 — Building a Social Media Presence",
+    "Level 4 — Managing a Difficult Audience",
+    "Level 5 — Engaging Humor",
+    "Level 5 — Reflect on Your Path",
+  ],
+  "N/A — General Speech": [
+    "Icebreaker",
+    "Keynote / Presentation",
+    "Table Topics",
+    "Humorous Speech",
+    "Evaluation",
+    "Inspirational Talk",
+    "Business Pitch",
+    "Contest Speech",
+    "Other / Custom",
+  ],
+};
+
+// ── Project → Official Toastmasters duration map ──────────────────────────────
+const PROJECT_DURATIONS = {
+  // Level 1
+  "Level 1 — Icebreaker":                          "4-6 minutes",
+  "Level 1 — Writing a Speech with Purpose":        "5-7 minutes",
+  // Level 2
+  "Level 2 — Understanding Your Communication Style": "5-7 minutes",
+  "Level 2 — Effective Body Language":               "5-7 minutes",
+  "Level 2 — Introduction to Toastmasters Mentoring": "5-7 minutes",
+  // Level 3
+  "Level 3 — Persuasive Influence":                 "5-7 minutes",
+  "Level 3 — Using Presentation Software":           "5-7 minutes",
+  "Level 3 — Connect with Storytelling":             "5-7 minutes",
+  "Level 3 — Deliver Social Speeches":               "5-7 minutes",
+  "Level 3 — Manage Projects Successfully":          "5-7 minutes",
+  // Level 4
+  "Level 4 — Building a Social Media Presence":      "5-7 minutes",
+  "Level 4 — Managing a Difficult Audience":         "5-7 minutes",
+  "Level 4 — Leading in Your Volunteer Organization":"5-7 minutes",
+  "Level 4 — Create a Podcast":                      "5-7 minutes",
+  "Level 4 — Motivate Others":                       "5-7 minutes",
+  "Level 4 — Manage Change":                         "5-7 minutes",
+  "Level 4 — The Power of Persuasion":               "5-7 minutes",
+  "Level 4 — Negotiate the Best Outcome":            "5-7 minutes",
+  "Level 4 — Coach and Mentor":                      "5-7 minutes",
+  "Level 4 — Using Humor Effectively":               "5-7 minutes",
+  // Level 5
+  "Level 5 — Prepare to Speak Professionally":      "18-22 minutes (keynote)",
+  "Level 5 — High Performance Leadership":           "5-7 minutes",
+  "Level 5 — Ethical Leadership":                    "5-7 minutes",
+  "Level 5 — Leading in Your Volunteer Organization":"5-7 minutes",
+  "Level 5 — Engaging Humor":                        "5-7 minutes",
+  "Level 5 — Reflect on Your Path":                  "5-7 minutes",
+  // General
+  "Icebreaker":             "4-6 minutes",
+  "Table Topics":           "1-2 minutes",
+  "Humorous Speech":        "5-7 minutes",
+  "Evaluation":             "2-3 minutes",
+  "Keynote / Presentation": "18-22 minutes (keynote)",
+  "Inspirational Talk":     "5-7 minutes",
+  "Business Pitch":         "5-7 minutes",
+  "Contest Speech":         "5-7 minutes",
+  "Other / Custom":         "5-7 minutes",
+};
+
+function updateDuration() {
+  const project = document.getElementById("project").value;
+  const dur = PROJECT_DURATIONS[project];
+  if (dur) {
+    const sel = document.getElementById("duration");
+    for (let opt of sel.options) {
+      if (opt.value === dur || opt.text === dur) { sel.value = opt.value; break; }
+    }
+  }
+  updateObjectives();
+}
+
+function updateObjectives() {
+  const project = document.getElementById("project").value;
+  const box   = document.getElementById("project-objectives-box");
+  const list  = document.getElementById("objectives-list");
+  const hidden = document.getElementById("project_objectives");
+
+  const objectives = PROJECT_OBJECTIVES[project];
+  if (!objectives || objectives.length === 0) {
+    box.style.display = "none";
+    hidden.value = "";
+    return;
+  }
+
+  list.innerHTML = "";
+  objectives.forEach(obj => {
+    const li = document.createElement("li");
+    li.textContent = obj;
+    list.appendChild(li);
+  });
+  hidden.value = objectives.join(" | ");
+  box.style.display = "block";
+}
+
+function updateProjects() {
+  const pathway = document.getElementById("pathway").value;
+  const projectSelect = document.getElementById("project");
+  projectSelect.innerHTML = "";
+
+  const projects = PATHWAY_PROJECTS[pathway];
+  if (!projects) {
+    projectSelect.innerHTML = '<option value="">— Select a Pathway first —</option>';
+    document.getElementById("project-objectives-box").style.display = "none";
+    document.getElementById("project_objectives").value = "";
+    return;
+  }
+
+  // Group by level prefix for optgroups
+  const groups = {};
+  projects.forEach(p => {
+    const match = p.match(/^(Level \d+|[^—]+)/);
+    const group = match ? match[0].trim() : "General";
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(p);
+  });
+
+  // If only one group (General Speech), skip optgroups
+  const groupKeys = Object.keys(groups);
+  if (groupKeys.length === 1) {
+    const blank = document.createElement("option");
+    blank.value = ""; blank.textContent = "— Select a Project —";
+    projectSelect.appendChild(blank);
+    projects.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p; opt.textContent = p;
+      projectSelect.appendChild(opt);
+    });
+  } else {
+    const blank = document.createElement("option");
+    blank.value = ""; blank.textContent = "— Select a Project —";
+    projectSelect.appendChild(blank);
+    groupKeys.forEach(group => {
+      const og = document.createElement("optgroup");
+      og.label = group;
+      groups[group].forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p; opt.textContent = p.replace(/^Level \d+ — /, "");
+        og.appendChild(opt);
+      });
+      projectSelect.appendChild(og);
+    });
+  }
+  // Reset duration + objectives when pathway changes
+  document.getElementById("duration").value = "5-7 minutes";
+  document.getElementById("project-objectives-box").style.display = "none";
+  document.getElementById("project_objectives").value = "";
+}
+
+// ── Speech generation ─────────────────────────────────────────────────────────
 let currentSpeech = "";
 
 document.getElementById("speechForm").addEventListener("submit", async (e) => {
@@ -83,22 +617,37 @@ document.getElementById("speechForm").addEventListener("submit", async (e) => {
   document.getElementById("output-area").innerHTML = '<div class="spinner"></div>';
 
   const payload = {
-    topic: document.getElementById("topic").value,
-    speech_type: document.getElementById("speech_type").value,
-    purpose: document.getElementById("purpose").value,
-    audience: document.getElementById("audience").value,
-    duration: document.getElementById("duration").value,
-    tone: document.getElementById("tone").value,
-    key_points: document.getElementById("key_points").value,
+    topic:        document.getElementById("topic").value,
+    pathway:      document.getElementById("pathway").value,
+    project:      document.getElementById("project").value,
+    story_line:   document.getElementById("story_line").value,
+    central_message:    document.getElementById("central_message").value,
+    intro_style:        document.getElementById("intro_style").value,
+    closing_technique:  document.getElementById("closing_technique").value,
+    project_objectives: document.getElementById("project_objectives").value,
+    audience:           document.getElementById("audience").value,
+    duration:     document.getElementById("duration").value,
+    tone:         document.getElementById("tone").value,
+    key_points:   document.getElementById("key_points").value,
   };
 
+  // Hide previous suggestions while regenerating
+  document.getElementById("suggest-panel").style.display = "none";
+
   try {
-    const res = await fetch("/generate", { method: "POST",
-      headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload) });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    currentSpeech = data.speech;
-    displaySpeech(data.speech);
+    // Fire speech generation and suggestions in parallel
+    const [speechRes, suggestRes] = await Promise.all([
+      fetch("/generate", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload) }),
+      fetch("/suggest",  { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload) })
+    ]);
+    const speechData  = await speechRes.json();
+    const suggestData = await suggestRes.json();
+
+    if (speechData.error) throw new Error(speechData.error);
+    currentSpeech = speechData.speech;
+    displaySpeech(speechData.speech);
+
+    if (!suggestData.error) displaySuggestions(suggestData);
   } catch (err) {
     document.getElementById("output-area").innerHTML = `<p class="error">Error: ${err.message}</p>`;
   } finally {
@@ -112,9 +661,11 @@ async function refineSpeech() {
   if (!instruction || !currentSpeech) return;
   document.getElementById("output-area").innerHTML = '<div class="spinner"></div>';
   try {
-    const res = await fetch("/refine", { method: "POST",
+    const res = await fetch("/refine", {
+      method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ speech: currentSpeech, instruction }) });
+      body: JSON.stringify({ speech: currentSpeech, instruction })
+    });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     currentSpeech = data.speech;
@@ -129,6 +680,41 @@ function displaySpeech(text) {
   document.getElementById("toolbar").style.display = "flex";
   document.getElementById("output-area").innerHTML =
     `<div class="speech-text">${text.replace(/\n/g, "<br/>")}</div>`;
+}
+
+function displaySuggestions(data) {
+  const panel = document.getElementById("suggest-panel");
+  const titlesList  = document.getElementById("titles-list");
+  const introsList  = document.getElementById("intros-list");
+  titlesList.innerHTML = "";
+  introsList.innerHTML = "";
+
+  (data.titles || []).forEach(t => {
+    const li = document.createElement("li");
+    li.className = "suggest-item";
+    li.innerHTML = `<span class="suggest-text">${t}</span>
+      <button class="copy-chip" title="Copy" onclick="copyChip(this, '${t.replace(/'/g,"\\'")}')">📋</button>`;
+    titlesList.appendChild(li);
+  });
+
+  (data.intros || []).forEach(intro => {
+    const li = document.createElement("li");
+    li.className = "suggest-item";
+    const safe = intro.replace(/'/g,"\\'");
+    li.innerHTML = `<span class="suggest-text">${intro}</span>
+      <button class="copy-chip" title="Copy" onclick="copyChip(this, '${safe}')">📋</button>`;
+    introsList.appendChild(li);
+  });
+
+  panel.style.display = "block";
+}
+
+function copyChip(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = "✓";
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
 }
 
 function copyToClipboard() {
