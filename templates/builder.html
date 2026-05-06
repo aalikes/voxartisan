@@ -103,6 +103,16 @@
         </select>
       </label>
 
+      <label>Language
+        <select id="language">
+          <option value="English" selected>🇺🇸 English</option>
+          <option value="French">🇫🇷 French</option>
+          <option value="Spanish">🇪🇸 Spanish</option>
+          <option value="Haitian Creole">🇭🇹 Haitian Creole</option>
+          <option value="Portuguese">🇧🇷 Portuguese</option>
+        </select>
+      </label>
+
       <label>Key Points (optional)
         <textarea id="key_points" rows="3" placeholder="Bullet points or phrases to include..."></textarea>
       </label>
@@ -120,6 +130,8 @@
       <div class="toolbar-actions">
         <button class="btn btn-ghost btn-sm" onclick="copyToClipboard()">📋 Copy</button>
         <button class="btn btn-ghost btn-sm" onclick="toggleRefine()">✏️ Refine</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleTTSBar()" id="listen-btn">🔊 Listen</button>
+        <button class="btn btn-ghost btn-sm" onclick="openTeleprompter()">📺 Teleprompter</button>
       </div>
     </div>
     <div id="output-area" class="output-placeholder">
@@ -128,6 +140,20 @@
     <div id="refine-panel" class="refine-panel" style="display:none">
       <textarea id="refine-input" rows="2" placeholder='e.g. "Make the opening funnier", "Add a personal story", "Cut it to 5 minutes"'></textarea>
       <button class="btn btn-primary" onclick="refineSpeech()">Refine ↺</button>
+    </div>
+
+    <!-- TTS Listen bar -->
+    <div id="tts-bar" class="tts-bar" style="display:none">
+      <button class="btn btn-primary btn-sm tts-play-btn" onclick="ttsPlayPause()">▶ Play</button>
+      <button class="btn btn-ghost btn-sm" onclick="ttsStop()">⏹ Stop</button>
+      <label>Speed
+        <input type="range" id="tts-speed" min="0.5" max="2.0" step="0.1" value="0.9"
+               oninput="document.getElementById('tts-speed-val').textContent=parseFloat(this.value).toFixed(1)+'×'">
+        <span class="tts-speed-val" id="tts-speed-val">0.9×</span>
+      </label>
+      <label>Voice
+        <select id="tts-voice"></select>
+      </label>
     </div>
 
     <!-- Titles & Intros panel -->
@@ -148,6 +174,21 @@
       </div>
     </div>
   </section>
+</div>
+
+<!-- ── Teleprompter Overlay ───────────────────────────────────────────────── -->
+<div id="teleprompter-overlay" style="display:none">
+  <div id="tp-controls">
+    <button onclick="tpSlower()">🐢 Slower</button>
+    <button onclick="tpToggle()" id="tp-play-btn">▶ Start</button>
+    <button onclick="tpFaster()">🐇 Faster</button>
+    <span id="tp-speed-label">Speed: <strong id="tp-speed-display">2</strong> px/tick</span>
+    <button onclick="tpFontDown()">A−</button>
+    <button onclick="tpFontUp()">A+</button>
+    <button onclick="tpToggleTTS()" id="tp-tts-btn">🔊 Read Aloud</button>
+    <button class="tp-exit" onclick="closeTeleprompter()">✕ Exit (Esc)</button>
+  </div>
+  <div id="tp-text"></div>
 </div>
 
 <script>
@@ -754,6 +795,7 @@ document.getElementById("speechForm").addEventListener("submit", async (e) => {
     duration:     document.getElementById("duration").value,
     tone:         document.getElementById("tone").value,
     key_points:   document.getElementById("key_points").value,
+    language:     document.getElementById("language").value,
   };
 
   // Hide previous suggestions while regenerating
@@ -849,6 +891,194 @@ function copyToClipboard() {
 function toggleRefine() {
   const p = document.getElementById("refine-panel");
   p.style.display = p.style.display === "none" ? "block" : "none";
+}
+
+// ── Text-to-Speech (Web Speech API) ──────────────────────────────────────────
+let ttsSpeaking = false;
+
+function getSpeechForTTS() {
+  // Strip [speaker notes] from text — clean read-aloud version
+  return currentSpeech
+    .replace(/\[[^\]]*\]/g, '')   // remove [brackets]
+    .replace(/#{1,3} /g, '')      // remove markdown headers
+    .replace(/\*\*/g, '')         // remove bold markers
+    .replace(/\n{3,}/g, '\n\n')   // collapse extra blank lines
+    .trim();
+}
+
+function populateVoices() {
+  const voices = speechSynthesis.getVoices();
+  const sel = document.getElementById("tts-voice");
+  if (!sel) return;
+  sel.innerHTML = "";
+  voices.forEach((v, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `${v.name} (${v.lang})`;
+    // Pre-select English voice if available
+    if (v.lang.startsWith("en") && !sel.value) sel.value = i;
+    sel.appendChild(opt);
+  });
+}
+speechSynthesis.onvoiceschanged = populateVoices;
+populateVoices();
+
+function toggleTTSBar() {
+  if (!currentSpeech) return;
+  const bar = document.getElementById("tts-bar");
+  const isVisible = bar.style.display !== "none";
+  if (isVisible) {
+    ttsStop();
+    bar.style.display = "none";
+    document.getElementById("listen-btn").textContent = "🔊 Listen";
+  } else {
+    bar.style.display = "flex";
+    document.getElementById("listen-btn").textContent = "🔇 Close";
+    populateVoices();
+  }
+}
+
+function ttsPlayPause() {
+  const btn = document.querySelector(".tts-play-btn");
+  if (speechSynthesis.speaking && !speechSynthesis.paused) {
+    speechSynthesis.pause();
+    btn.textContent = "▶ Resume";
+    return;
+  }
+  if (speechSynthesis.paused) {
+    speechSynthesis.resume();
+    btn.textContent = "⏸ Pause";
+    return;
+  }
+  // Fresh start
+  ttsStop();
+  const text = getSpeechForTTS();
+  if (!text) return;
+  const utt = new SpeechSynthesisUtterance(text);
+  const voices = speechSynthesis.getVoices();
+  const idx = parseInt(document.getElementById("tts-voice").value);
+  if (voices[idx]) utt.voice = voices[idx];
+  utt.rate = parseFloat(document.getElementById("tts-speed").value);
+  utt.onend = () => { btn.textContent = "▶ Play"; ttsSpeaking = false; };
+  utt.onerror = () => { btn.textContent = "▶ Play"; ttsSpeaking = false; };
+  speechSynthesis.speak(utt);
+  ttsSpeaking = true;
+  btn.textContent = "⏸ Pause";
+}
+
+function ttsStop() {
+  speechSynthesis.cancel();
+  ttsSpeaking = false;
+  const btn = document.querySelector(".tts-play-btn");
+  if (btn) btn.textContent = "▶ Play";
+}
+
+// ── Teleprompter ──────────────────────────────────────────────────────────────
+let tpInterval = null;
+let tpSpeed    = 2;    // px per tick (50ms)
+let tpFontSize = 32;
+let tpRunning  = false;
+let tpTTSOn    = false;
+
+function formatForTeleprompter(text) {
+  // Convert markdown-ish sections into highlighted headers and dimmed notes
+  return text
+    .replace(/^## (.+)$/gm, '<span class="tp-section-header">$1</span>')
+    .replace(/^# (.+)$/gm, '<span class="tp-section-header">$1</span>')
+    .replace(/\[([^\]]+)\]/g, '<span class="tp-note">[$1]</span>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+}
+
+function openTeleprompter() {
+  if (!currentSpeech) return;
+  const overlay = document.getElementById("teleprompter-overlay");
+  const txt = document.getElementById("tp-text");
+  txt.innerHTML = formatForTeleprompter(currentSpeech);
+  txt.style.fontSize = tpFontSize + "px";
+  overlay.style.display = "flex";
+  overlay.scrollTop = 0;
+  tpRunning = false;
+  tpTTSOn   = false;
+  document.getElementById("tp-play-btn").textContent = "▶ Start";
+  document.getElementById("tp-play-btn").classList.remove("tp-active");
+  document.getElementById("tp-tts-btn").textContent = "🔊 Read Aloud";
+  document.getElementById("tp-speed-display").textContent = tpSpeed;
+  document.addEventListener("keydown", tpKeyHandler);
+}
+
+function closeTeleprompter() {
+  tpStop();
+  if (tpTTSOn) ttsStop();
+  document.getElementById("teleprompter-overlay").style.display = "none";
+  document.removeEventListener("keydown", tpKeyHandler);
+}
+
+function tpKeyHandler(e) {
+  if (e.key === "Escape") { closeTeleprompter(); }
+  if (e.key === " ")      { e.preventDefault(); tpToggle(); }
+  if (e.key === "ArrowUp")   { e.preventDefault(); tpSlower(); }
+  if (e.key === "ArrowDown") { e.preventDefault(); tpFaster(); }
+}
+
+function tpToggle() {
+  tpRunning ? tpStop() : tpStart();
+}
+
+function tpStart() {
+  tpRunning = true;
+  const btn = document.getElementById("tp-play-btn");
+  btn.textContent = "⏸ Pause";
+  btn.classList.add("tp-active");
+  const overlay = document.getElementById("teleprompter-overlay");
+  tpInterval = setInterval(() => {
+    overlay.scrollTop += tpSpeed;
+    if (overlay.scrollTop + overlay.clientHeight >= overlay.scrollHeight - 20) {
+      tpStop();
+    }
+  }, 50);
+}
+
+function tpStop() {
+  tpRunning = false;
+  clearInterval(tpInterval);
+  tpInterval = null;
+  const btn = document.getElementById("tp-play-btn");
+  if (btn) { btn.textContent = "▶ Start"; btn.classList.remove("tp-active"); }
+}
+
+function tpSlower() {
+  tpSpeed = Math.max(0.5, parseFloat((tpSpeed - 0.5).toFixed(1)));
+  document.getElementById("tp-speed-display").textContent = tpSpeed;
+}
+function tpFaster() {
+  tpSpeed = Math.min(10, parseFloat((tpSpeed + 0.5).toFixed(1)));
+  document.getElementById("tp-speed-display").textContent = tpSpeed;
+}
+function tpFontUp()   { tpFontSize = Math.min(72, tpFontSize + 4); document.getElementById("tp-text").style.fontSize = tpFontSize + "px"; }
+function tpFontDown() { tpFontSize = Math.max(18, tpFontSize - 4); document.getElementById("tp-text").style.fontSize = tpFontSize + "px"; }
+
+function tpToggleTTS() {
+  const btn = document.getElementById("tp-tts-btn");
+  if (tpTTSOn) {
+    ttsStop();
+    tpTTSOn = false;
+    btn.textContent = "🔊 Read Aloud";
+  } else {
+    // Start TTS from beginning while teleprompter scrolls
+    ttsStop();
+    const text = getSpeechForTTS();
+    const utt = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+    const idx = parseInt(document.getElementById("tts-voice")?.value || 0);
+    if (voices[idx]) utt.voice = voices[idx];
+    utt.rate = 0.9;
+    utt.onend = () => { tpTTSOn = false; btn.textContent = "🔊 Read Aloud"; };
+    speechSynthesis.speak(utt);
+    tpTTSOn = true;
+    btn.textContent = "🔇 Stop Reading";
+    // Also start auto-scroll if not already running
+    if (!tpRunning) tpStart();
+  }
 }
 </script>
 {% endblock %}

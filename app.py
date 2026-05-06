@@ -124,6 +124,7 @@ def generate():
     duration            = data.get("duration", "5-7 minutes")
     tone                = data.get("tone", "professional")
     key_points          = data.get("key_points", "")
+    language            = data.get("language", "English")
 
     pathway_line        = f"- Toastmasters Pathway: {pathway}" if pathway and pathway != "— Select a Pathway —" else ""
     project_line        = f"- Project: {project}" if project else ""
@@ -132,6 +133,7 @@ def generate():
     closing_line        = f"- Closing Technique: {closing_technique}"
     objectives_text     = f"\nProject Objectives to satisfy:\n{project_objectives}" if project_objectives else ""
     key_points_line     = f"- Key Points: {key_points}" if key_points else ""
+    language_note       = f"\n⚠️ LANGUAGE REQUIREMENT: Generate the ENTIRE speech — every word, every speaker note — in {language}. Do not use English." if language != "English" else ""
 
     prompt = f"""You are VoxArtisan — an elite Toastmasters speech architect and coach. Craft a complete, performance-ready speech.
 
@@ -146,17 +148,34 @@ Speech Brief:
 {central_msg_line}
 {closing_line}
 {key_points_line}
+- Language: {language}
 {story_line_text}
 {objectives_text}
+{language_note}
 
-Deliver the full speech with:
-1. A powerful HOOK opening using the "{intro_style}" technique — nail it in the first 30 seconds
-2. Structured body with smooth transitions that supports the central message
-3. Closing using the "{closing_technique}" technique — memorable, with a clear call-to-action
-4. [Speaker notes in brackets] for emphasis, pauses, gestures, and vocal variety
-5. Word count estimate at the end
+MANDATORY SPEECH STRUCTURE — deliver the sections in this exact order:
 
-Format sections clearly: TITLE → HOOK → BODY → CLOSE → SPEAKER NOTES → WORD COUNT"""
+## TITLE
+A punchy, memorable title.
+
+## HOOK
+The VERY FIRST WORDS the speaker delivers — no salutation before this. Use the "{intro_style}" technique to grab the room in the first 30 seconds. This is the opening salvo.
+
+## SALUTATION
+After the hook lands, deliver the Toastmasters salutation:
+"[Madam/Mr.] Toastmaster, fellow Toastmasters, and most honored guests..."
+
+## BODY
+Structured content with smooth transitions that build toward the central message. Include [speaker notes in brackets] for emphasis, pauses, gestures, and vocal variety.
+
+## CLOSE
+Use the "{closing_technique}" technique — memorable, emotionally resonant, with a clear call-to-action.
+
+## CLOSING SALUTATION
+End with the formal Toastmasters handoff: "Back to you, [Madam/Mr.] Toastmaster."
+
+## WORD COUNT
+Estimated word count and speaking time."""
 
     try:
         model = genai.GenerativeModel("gemini-2.5-flash")
@@ -181,12 +200,15 @@ def suggest():
     intro_style         = data.get("intro_style", "Bold Statement")
     closing_technique   = data.get("closing_technique", "Callback to Opening")
     duration            = data.get("duration", "5-7 minutes")
+    language            = data.get("language", "English")
 
-    context = f"Topic: {topic} | Pathway: {pathway} | Project: {project} | Tone: {tone} | Duration: {duration} | Preferred Intro Style: {intro_style} | Closing Technique: {closing_technique}"
+    context = f"Topic: {topic} | Pathway: {pathway} | Project: {project} | Tone: {tone} | Duration: {duration} | Preferred Intro Style: {intro_style} | Closing Technique: {closing_technique} | Language: {language}"
     if central_message:
         context += f" | Central Message: {central_message}"
     if story_line:
         context += f" | Story: {story_line}"
+
+    lang_instruction = f" Generate ALL titles and intros in {language}." if language != "English" else ""
 
     prompt = f"""You are VoxArtisan, an elite Toastmasters speech coach.
 
@@ -210,7 +232,7 @@ Return ONLY valid JSON (no markdown, no explanation) in this exact structure:
 }}
 
 Titles: punchy, memorable, fit the tone and subject.
-Intros: complete speakable sentences (2-3 sentences max), first intro MUST use the "{intro_style}" technique, the other two use varied alternatives."""
+Intros: complete speakable sentences (2-3 sentences max), first intro MUST use the "{intro_style}" technique, the other two use varied alternatives. IMPORTANT: These are HOOK openings only — no Toastmasters salutation yet.{lang_instruction}"""
 
     try:
         model = genai.GenerativeModel("gemini-2.5-flash")
