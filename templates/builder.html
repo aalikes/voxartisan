@@ -129,9 +129,12 @@
       <h3 id="output-title">Your Speech</h3>
       <div class="toolbar-actions">
         <button class="btn btn-ghost btn-sm" onclick="copyToClipboard()">📋 Copy</button>
-        <button class="btn btn-ghost btn-sm" onclick="toggleRefine()">✏️ Refine</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleEdit()" id="edit-btn">✏️ Edit</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleRefine()">🤖 AI Refine</button>
         <button class="btn btn-ghost btn-sm" onclick="toggleTTSBar()" id="listen-btn">🔊 Listen</button>
         <button class="btn btn-ghost btn-sm" onclick="openTeleprompter()">📺 Teleprompter</button>
+        <button class="btn btn-ghost btn-sm" id="gdrive-btn" onclick="exportToDrive()">📁 Drive</button>
+        <button class="btn btn-ghost btn-sm" id="notion-btn" onclick="exportToNotion()">🗒️ Notion</button>
       </div>
     </div>
     <div id="output-area" class="output-placeholder">
@@ -845,8 +848,77 @@ async function refineSpeech() {
 
 function displaySpeech(text) {
   document.getElementById("toolbar").style.display = "flex";
+  // Render read-only view
   document.getElementById("output-area").innerHTML =
-    `<div class="speech-text">${text.replace(/\n/g, "<br/>")}</div>`;
+    `<div class="speech-text" id="speech-display">${formatSpeechHTML(text)}</div>
+     <div id="speech-editor-wrap" style="display:none">
+       <textarea id="speech-editor" class="speech-editor-ta" rows="30" spellcheck="true">${escapeHTML(text)}</textarea>
+       <div class="editor-actions">
+         <button class="btn btn-primary btn-sm" onclick="commitEdit()">✅ Save Changes</button>
+         <button class="btn btn-ghost btn-sm" onclick="revertEdit()">↩ Revert to Original</button>
+       </div>
+     </div>`;
+  // Reset edit state
+  document.getElementById("edit-btn").textContent = "✏️ Edit";
+  isEditing = false;
+}
+
+function formatSpeechHTML(text) {
+  // Render markdown-ish headers and speaker notes with visual styling
+  return text
+    .replace(/^## (.+)$/gm, '<span class="section-header">$1</span>')
+    .replace(/^# (.+)$/gm, '<span class="section-header speech-title">$1</span>')
+    .replace(/\[([^\]]+)\]/g, '<span class="speaker-note">[$1]</span>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, "<br/>");
+}
+
+function escapeHTML(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+let isEditing = false;
+let originalSpeech = "";
+
+function toggleEdit() {
+  if (!currentSpeech) return;
+  const display = document.getElementById("speech-display");
+  const editorWrap = document.getElementById("speech-editor-wrap");
+  const btn = document.getElementById("edit-btn");
+  if (!isEditing) {
+    // Enter edit mode
+    originalSpeech = currentSpeech;
+    document.getElementById("speech-editor").value = currentSpeech;
+    display.style.display = "none";
+    editorWrap.style.display = "block";
+    document.getElementById("speech-editor").focus();
+    btn.textContent = "👁 Preview";
+    isEditing = true;
+  } else {
+    // Exit edit mode — apply changes
+    commitEdit();
+  }
+}
+
+function commitEdit() {
+  const edited = document.getElementById("speech-editor").value;
+  currentSpeech = edited;
+  document.getElementById("speech-display").innerHTML = formatSpeechHTML(edited);
+  document.getElementById("speech-display").style.display = "block";
+  document.getElementById("speech-editor-wrap").style.display = "none";
+  document.getElementById("edit-btn").textContent = "✏️ Edit";
+  isEditing = false;
+}
+
+function revertEdit() {
+  if (!originalSpeech) return;
+  currentSpeech = originalSpeech;
+  document.getElementById("speech-editor").value = originalSpeech;
+  document.getElementById("speech-display").innerHTML = formatSpeechHTML(originalSpeech);
+  document.getElementById("speech-display").style.display = "block";
+  document.getElementById("speech-editor-wrap").style.display = "none";
+  document.getElementById("edit-btn").textContent = "✏️ Edit";
+  isEditing = false;
 }
 
 function displaySuggestions(data) {
@@ -1064,7 +1136,6 @@ function tpToggleTTS() {
     tpTTSOn = false;
     btn.textContent = "🔊 Read Aloud";
   } else {
-    // Start TTS from beginning while teleprompter scrolls
     ttsStop();
     const text = getSpeechForTTS();
     const utt = new SpeechSynthesisUtterance(text);
@@ -1076,8 +1147,101 @@ function tpToggleTTS() {
     speechSynthesis.speak(utt);
     tpTTSOn = true;
     btn.textContent = "🔇 Stop Reading";
-    // Also start auto-scroll if not already running
     if (!tpRunning) tpStart();
+  }
+}
+
+// ── Integration status ────────────────────────────────────────────────────────
+let driveConnected = false;
+let notionConnected = false;
+
+async function checkIntegrations() {
+  try {
+    const r = await fetch("/status/integrations");
+    const d = await r.json();
+    driveConnected  = d.gdrive;
+    notionConnected = d.notion;
+    const gb = document.getElementById("gdrive-btn");
+    const nb = document.getElementById("notion-btn");
+    if (gb) gb.textContent = driveConnected  ? "📁 Drive ✓"  : "📁 Drive";
+    if (nb) nb.textContent = notionConnected ? "🗒️ Notion ✓" : "🗒️ Notion";
+  } catch(e) {}
+}
+checkIntegrations();
+
+// ── Google Drive export ───────────────────────────────────────────────────────
+async function exportToDrive() {
+  if (!currentSpeech) return alert("Generate a speech first.");
+  const btn = document.getElementById("gdrive-btn");
+
+  if (!driveConnected) {
+    // Initiate OAuth connection
+    if (confirm("Connect Google Drive to save speeches? You'll be redirected to Google.")) {
+      window.location.href = "/auth/drive";
+    }
+    return;
+  }
+
+  btn.textContent = "📁 Saving…";
+  btn.disabled = true;
+  const title = document.getElementById("output-title").textContent.replace("Your Speech","VoxArtisan Speech").trim();
+  try {
+    const r = await fetch("/export/gdrive", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ speech: currentSpeech, title })
+    });
+    const d = await r.json();
+    if (d.error === "drive_not_connected") {
+      driveConnected = false;
+      btn.textContent = "📁 Drive";
+      if (confirm("Drive not connected. Connect now?")) window.location.href = "/auth/drive";
+      return;
+    }
+    if (d.error) throw new Error(d.error);
+    btn.textContent = "📁 Drive ✓";
+    if (confirm(`Speech saved to Google Drive!\n\nOpen in Drive?`)) window.open(d.url, "_blank");
+  } catch(e) {
+    alert("Drive export failed: " + e.message);
+    btn.textContent = "📁 Drive";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Notion export ─────────────────────────────────────────────────────────────
+async function exportToNotion() {
+  if (!currentSpeech) return alert("Generate a speech first.");
+  const btn = document.getElementById("notion-btn");
+
+  if (!notionConnected) {
+    alert("Notion is not configured.\n\nAdd NOTION_TOKEN and NOTION_PARENT_PAGE_ID to your .env file, then restart the server.");
+    return;
+  }
+
+  btn.textContent = "🗒️ Saving…";
+  btn.disabled = true;
+  const title = document.getElementById("output-title").textContent.replace("Your Speech","VoxArtisan Speech").trim();
+  try {
+    const r = await fetch("/export/notion", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ speech: currentSpeech, title })
+    });
+    const d = await r.json();
+    if (d.error === "notion_not_configured" || d.error === "notion_parent_missing") {
+      alert("Notion not fully configured. Add NOTION_TOKEN and NOTION_PARENT_PAGE_ID to .env.");
+      btn.textContent = "🗒️ Notion";
+      return;
+    }
+    if (d.error) throw new Error(d.error);
+    btn.textContent = "🗒️ Notion ✓";
+    if (confirm(`Speech saved to Notion!\n\nOpen page?`)) window.open(d.url, "_blank");
+  } catch(e) {
+    alert("Notion export failed: " + e.message);
+    btn.textContent = "🗒️ Notion";
+  } finally {
+    btn.disabled = false;
   }
 }
 </script>

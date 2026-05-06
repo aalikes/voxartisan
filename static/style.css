@@ -165,6 +165,31 @@ footer { text-align: center; padding: 1.5rem; color: var(--muted); font-size: .8
   color: var(--accent2); font-size: .75rem; top: .05rem;
 }
 
+/* SPEECH DISPLAY — SECTION HEADERS & NOTES */
+.section-header {
+  display: block; font-size: .7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--accent2); margin: 1.5rem 0 .3rem;
+}
+.speech-title {
+  font-size: 1.1rem !important; letter-spacing: .02em !important;
+  color: var(--text) !important; font-family: inherit;
+}
+.speaker-note {
+  color: var(--muted); font-size: .85rem; font-style: italic;
+}
+
+/* INLINE SPEECH EDITOR */
+.speech-editor-ta {
+  width: 100%; min-height: 420px; background: var(--bg);
+  border: 1px solid var(--accent); border-radius: 10px;
+  color: var(--text); padding: 1.2rem; font-size: .93rem;
+  font-family: inherit; line-height: 1.85; resize: vertical;
+}
+.speech-editor-ta:focus { outline: none; }
+.editor-actions {
+  display: flex; gap: .6rem; margin-top: .75rem;
+}
+
 /* TTS LISTEN BAR */
 .tts-bar {
   display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;

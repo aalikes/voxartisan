@@ -1,13 +1,17 @@
 import os
 import json
+from io import BytesIO
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_session import Session
 import google.generativeai as genai
 from google_auth_oauthlib.flow import Flow
-from google.oauth2 import id_token
+from google.oauth2 import id_token, credentials as google_credentials
 from google.auth.transport import requests as google_requests
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 import pathlib
 import requests
+from notion_client import Client as NotionClient
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-in-prod")
@@ -29,6 +33,24 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # Dev only — remove in prod H
 
 LOCAL_MODE = os.environ.get("LOCAL_MODE", "").lower() == "true"
 LOCAL_USER = {"name": "Shah", "email": "aalikes@gmail.com", "picture": ""}
+
+# Notion config
+NOTION_TOKEN      = os.environ.get("NOTION_TOKEN", "")
+NOTION_PARENT_ID  = os.environ.get("NOTION_PARENT_PAGE_ID", "")
+
+# Google Drive config
+DRIVE_TOKEN_FILE  = os.path.join(os.path.dirname(__file__), "drive_token.json")
+DRIVE_REDIRECT    = "http://localhost:5000/auth/drive/callback"
+DRIVE_SCOPES      = ["https://www.googleapis.com/auth/drive.file"]
+DRIVE_CLIENT_SECRETS = {
+    "web": {
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "redirect_uris": [DRIVE_REDIRECT],
+    }
+}
 
 CLIENT_SECRETS = {
     "web": {
@@ -274,6 +296,145 @@ Return the improved full speech text only."""
         return jsonify({"speech": response.text})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── Google Drive OAuth ────────────────────────────────────────────────────────
+
+@app.route("/auth/drive")
+def auth_drive():
+    """Initiate Drive OAuth — called once to connect Drive."""
+    flow = Flow.from_client_config(
+        DRIVE_CLIENT_SECRETS,
+        scopes=DRIVE_SCOPES,
+        redirect_uri=DRIVE_REDIRECT,
+    )
+    auth_url, state = flow.authorization_url(prompt="consent", access_type="offline")
+    session["drive_state"] = state
+    return redirect(auth_url)
+
+
+@app.route("/auth/drive/callback")
+def auth_drive_callback():
+    flow = Flow.from_client_config(
+        DRIVE_CLIENT_SECRETS,
+        scopes=DRIVE_SCOPES,
+        redirect_uri=DRIVE_REDIRECT,
+        state=session.get("drive_state"),
+    )
+    flow.fetch_token(authorization_response=request.url)
+    creds = flow.credentials
+    with open(DRIVE_TOKEN_FILE, "w") as f:
+        json.dump({
+            "token": creds.token,
+            "refresh_token": creds.refresh_token,
+            "token_uri": creds.token_uri,
+            "client_id": creds.client_id,
+            "client_secret": creds.client_secret,
+            "scopes": list(creds.scopes or DRIVE_SCOPES),
+        }, f)
+    return redirect(url_for("builder") + "?drive=connected")
+
+
+# ── Export: Google Drive ──────────────────────────────────────────────────────
+
+@app.route("/export/gdrive", methods=["POST"])
+def export_gdrive():
+    if not session.get("user"):
+        return jsonify({"error": "Not authenticated"}), 401
+    if not os.path.exists(DRIVE_TOKEN_FILE):
+        return jsonify({"error": "drive_not_connected"}), 403
+
+    data   = request.get_json()
+    speech = data.get("speech", "")
+    title  = data.get("title", "VoxArtisan Speech")
+
+    try:
+        with open(DRIVE_TOKEN_FILE) as f:
+            td = json.load(f)
+        creds = google_credentials.Credentials(
+            token=td["token"],
+            refresh_token=td.get("refresh_token"),
+            token_uri=td["token_uri"],
+            client_id=td["client_id"],
+            client_secret=td["client_secret"],
+            scopes=td["scopes"],
+        )
+        service = build("drive", "v3", credentials=creds)
+        file_meta = {"name": f"{title}.md"}
+        media = MediaIoBaseUpload(
+            BytesIO(speech.encode("utf-8")), mimetype="text/markdown", resumable=False
+        )
+        f = service.files().create(
+            body=file_meta, media_body=media, fields="id,webViewLink"
+        ).execute()
+        return jsonify({"url": f.get("webViewLink"), "id": f.get("id")})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Export: Notion ────────────────────────────────────────────────────────────
+
+@app.route("/export/notion", methods=["POST"])
+def export_notion():
+    if not session.get("user"):
+        return jsonify({"error": "Not authenticated"}), 401
+    if not NOTION_TOKEN:
+        return jsonify({"error": "notion_not_configured"}), 400
+    if not NOTION_PARENT_ID:
+        return jsonify({"error": "notion_parent_missing"}), 400
+
+    data   = request.get_json()
+    speech = data.get("speech", "")
+    title  = data.get("title", "VoxArtisan Speech")
+
+    # Build Notion blocks from speech text
+    blocks = []
+    for line in speech.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("## ") or line.startswith("# "):
+            heading = line.lstrip("# ").strip()
+            blocks.append({
+                "object": "block", "type": "heading_2",
+                "heading_2": {"rich_text": [{"type": "text", "text": {"content": heading[:2000]}}]}
+            })
+        elif line.startswith("[") and line.endswith("]"):
+            # Speaker note → callout block
+            blocks.append({
+                "object": "block", "type": "callout",
+                "callout": {
+                    "rich_text": [{"type": "text", "text": {"content": line[1:-1][:2000]}}],
+                    "icon": {"emoji": "🎤"}
+                }
+            })
+        else:
+            blocks.append({
+                "object": "block", "type": "paragraph",
+                "paragraph": {"rich_text": [{"type": "text", "text": {"content": line[:2000]}}]}
+            })
+
+    try:
+        notion = NotionClient(auth=NOTION_TOKEN)
+        page = notion.pages.create(
+            parent={"page_id": NOTION_PARENT_ID},
+            properties={"title": {"title": [{"text": {"content": title}}]}},
+            children=blocks[:100],  # Notion max 100 blocks per request
+        )
+        return jsonify({"url": page.get("url"), "id": page.get("id")})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Status checks ─────────────────────────────────────────────────────────────
+
+@app.route("/status/integrations")
+def integration_status():
+    """Return which integrations are configured/connected."""
+    return jsonify({
+        "gdrive": os.path.exists(DRIVE_TOKEN_FILE),
+        "notion": bool(NOTION_TOKEN and NOTION_PARENT_ID),
+    })
 
 
 if __name__ == "__main__":
