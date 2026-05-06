@@ -159,7 +159,7 @@ Deliver the full speech with:
 Format sections clearly: TITLE → HOOK → BODY → CLOSE → SPEAKER NOTES → WORD COUNT"""
 
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content(prompt)
         return jsonify({"speech": response.text})
     except Exception as e:
@@ -213,7 +213,7 @@ Titles: punchy, memorable, fit the tone and subject.
 Intros: complete speakable sentences (2-3 sentences max), first intro MUST use the "{intro_style}" technique, the other two use varied alternatives."""
 
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content(prompt)
         text = response.text.strip()
         # Strip markdown code fences if Gemini wraps in ```json ... ```
@@ -247,7 +247,7 @@ REFINEMENT INSTRUCTION:
 Return the improved full speech text only."""
 
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content(prompt)
         return jsonify({"speech": response.text})
     except Exception as e:
