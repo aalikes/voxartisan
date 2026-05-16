@@ -8,3 +8,7 @@ flask_session/
 .DS_Store
 venv/
 .venv/
+.pytest_cache/
+tests/__pycache__/
+drive_token.json
+*.test.db
