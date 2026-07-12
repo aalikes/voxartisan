@@ -1,0 +1,10 @@
+name = "voxartisan"
+compatibility_date = "2025-07-12"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "."
+
+# D1 Database for speech storage
+[[d1_databases]]
+binding = "DB"
+database_name = "voxartisan-db"
+database_id = "ea9747bf-263d-47b2-9bda-94fc84381807"

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoxArtisan — AI Speech Builder for Toastmasters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0a0a0a;--white:#fafaf8;--gray-50:#f5f5f2;--gray-100:#e8e8e4;
+  --gray-200:#d0d0cb;--gray-400:#9a9a94;--gray-600:#5a5a55;
+  --accent:#0a0a0a;--border:rgba(10,10,10,0.12);--border-strong:rgba(10,10,10,0.25);
+  --radius:6px;--radius-lg:10px;
+  --font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+}
+html{font-size:16px;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font-body);background:var(--white);color:var(--black);min-height:100vh;line-height:1.6}
+
+/* ── Layout ── */
+.app{max-width:760px;margin:0 auto;padding:0 20px 80px}
+.header{display:flex;align-items:center;justify-content:space-between;padding:28px 0 24px;border-bottom:1px solid var(--border)}
+.logo{font-family:var(--font-mono);font-size:13px;font-weight:500;letter-spacing:0.04em;color:var(--black)}
+.logo span{color:var(--gray-400)}
+.user-pill{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray-600);cursor:pointer}
+.user-avatar{width:28px;height:28px;border-radius:50%;border:1px solid var(--border-strong);object-fit:cover}
+.user-initials{width:28px;height:28px;border-radius:50%;background:var(--black);color:var(--white);font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono)}
+
+/* ── Auth Screen ── */
+.auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;text-align:center;gap:32px}
+.auth-title{font-size:28px;font-weight:300;letter-spacing:-0.02em;line-height:1.2}
+.auth-title strong{font-weight:500}
+.auth-sub{font-size:15px;color:var(--gray-600);max-width:380px;line-height:1.6}
+.btn-google{display:inline-flex;align-items:center;gap:10px;padding:12px 24px;background:var(--black);color:var(--white);font-family:var(--font-body);font-size:14px;font-weight:500;border:none;border-radius:var(--radius);cursor:pointer;text-decoration:none;transition:opacity 0.15s}
+.btn-google:hover{opacity:0.85}
+.btn-google svg{width:18px;height:18px}
+
+/* ── Dashboard ── */
+.dash-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin:32px 0 0}
+.dash-tab{font-size:13px;font-weight:400;padding:10px 16px;border:none;background:none;cursor:pointer;color:var(--gray-600);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:var(--font-body);transition:color 0.15s}
+.dash-tab.active{color:var(--black);border-bottom-color:var(--black);font-weight:500}
+.dash-tab:hover:not(.active){color:var(--black)}
+.dash-panel{display:none;padding:28px 0}
+.dash-panel.active{display:block}
+
+/* ── Past Speeches ── */
+.past-empty{font-size:14px;color:var(--gray-400);font-family:var(--font-mono);padding:40px 0;text-align:center}
+.speech-card{border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:12px;cursor:pointer;transition:border-color 0.15s,background 0.15s}
+.speech-card:hover{border-color:var(--border-strong);background:var(--gray-50)}
+.sc-title{font-size:14px;font-weight:500;margin-bottom:4px}
+.sc-meta{font-size:12px;color:var(--gray-400);font-family:var(--font-mono)}
+
+/* ── Step Form ── */
+.step-indicator{display:flex;align-items:center;gap:0;margin:28px 0 32px}
+.step-dot{width:28px;height:28px;border-radius:50%;border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--font-mono);font-weight:500;color:var(--gray-400);transition:all 0.2s;flex-shrink:0}
+.step-dot.active{background:var(--black);color:var(--white);border-color:var(--black)}
+.step-dot.done{background:var(--gray-100);color:var(--gray-600);border-color:var(--gray-100)}
+.step-line{flex:1;height:1px;background:var(--border)}
+.step-label{font-size:11px;font-family:var(--font-mono);color:var(--gray-400);margin:8px 0 24px;letter-spacing:0.05em;text-transform:uppercase}
+.step-label span{color:var(--black);font-weight:500}
+
+/* ── Form Fields ── */
+.field-group{margin-bottom:22px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+label{display:block;font-size:12px;font-weight:500;font-family:var(--font-mono);color:var(--gray-600);margin-bottom:6px;letter-spacing:0.04em;text-transform:uppercase}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-family:var(--font-body);font-size:14px;color:var(--black);background:var(--white);outline:none;transition:border-color 0.15s;appearance:none;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--black)}
+textarea{resize:vertical;min-height:80px;line-height:1.5}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a5a55' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.field-hint{font-size:12px;color:var(--gray-400);margin-top:4px;font-family:var(--font-mono)}
+.section-title{font-size:11px;font-weight:500;font-family:var(--font-mono);letter-spacing:0.08em;text-transform:uppercase;color:var(--gray-400);margin:28px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+/* ── Language Toggles ── */
+.lang-toggle-group{display:flex;gap:10px;margin-top:8px}
+.lang-toggle{padding:8px 20px;border:1px solid var(--border-strong);border-radius:var(--radius);font-family:var(--font-mono);font-size:13px;font-weight:500;cursor:pointer;background:var(--white);color:var(--gray-600);transition:all 0.15s;user-select:none}
+.lang-toggle.selected{background:var(--black);color:var(--white);border-color:var(--black)}
+.lang-toggle:hover:not(.selected){border-color:var(--black);color:var(--black)}
+
+/* ── Checklist ── */
+.checklist{list-style:none;margin:8px 0}
+.checklist li{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px}
+.checklist li:last-child{border-bottom:none}
+.check-box{width:18px;height:18px;border:1px solid var(--border-strong);border-radius:3px;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s}
+.check-box.checked{background:var(--black);border-color:var(--black)}
+.check-box.checked::after{content:'';width:10px;height:6px;border-left:1.5px solid white;border-bottom:1.5px solid white;transform:rotate(-45deg) translateY(-1px)}
+
+/* ── Buttons ── */
+.btn-row{display:flex;justify-content:space-between;align-items:center;margin-top:32px;padding-top:20px;border-top:1px solid var(--border)}
+.btn{padding:10px 20px;border-radius:var(--radius);font-family:var(--font-body);font-size:14px;font-weight:500;cursor:pointer;transition:opacity 0.15s,background 0.15s;border:1px solid transparent}
+.btn-primary{background:var(--black);color:var(--white);border-color:var(--black)}
+.btn-primary:hover{opacity:0.85}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed}
+.btn-ghost{background:none;color:var(--gray-600);border-color:var(--border-strong)}
+.btn-ghost:hover{color:var(--black);border-color:var(--black)}
+.btn-danger{background:none;color:#c0392b;border-color:#c0392b}
+.btn-danger:hover{background:#c0392b;color:white}
+
+/* ── Generating State ── */
+.generating{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:20px;text-align:center}
+.gen-spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--black);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gen-label{font-size:14px;color:var(--gray-600);font-family:var(--font-mono)}
+
+/* ── Output Tabs ── */
+.output-header{padding:24px 0 0}
+.output-title{font-size:20px;font-weight:400;letter-spacing:-0.01em;margin-bottom:4px}
+.output-meta{font-size:12px;font-family:var(--font-mono);color:var(--gray-400);margin-bottom:20px}
+.output-save-row{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.save-status{font-size:12px;font-family:var(--font-mono);color:var(--gray-400)}
+.save-status.saved{color:#27ae60}
+.tab-bar{display:flex;border-bottom:1px solid var(--border);gap:0}
+.tab-btn{font-size:13px;padding:9px 16px;border:none;background:none;cursor:pointer;color:var(--gray-600);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:var(--font-body);transition:color 0.15s}
+.tab-btn.active{color:var(--black);border-bottom-color:var(--black);font-weight:500}
+.tab-btn:hover:not(.active){color:var(--black)}
+.lang-sub-tabs{display:flex;gap:6px;padding:14px 0 0}
+.lang-sub-tab{padding:4px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;font-family:var(--font-mono);font-weight:500;cursor:pointer;color:var(--gray-600);background:none;transition:all 0.15s}
+.lang-sub-tab.active{background:var(--black);color:var(--white);border-color:var(--black)}
+.speech-text{font-family:var(--font-mono);font-size:14px;line-height:1.8;white-space:pre-wrap;padding:20px;background:var(--gray-50);border-radius:var(--radius-lg);margin-top:14px;min-height:200px;max-height:600px;overflow-y:auto;border:1px solid var(--border)}
+.speech-text.teleprompter{font-size:17px;line-height:2.1;background:var(--black);color:var(--white);letter-spacing:0.01em}
+.email-text{font-family:var(--font-mono);font-size:13px;line-height:1.7;white-space:pre-wrap;padding:20px;background:var(--gray-50);border-radius:var(--radius-lg);margin-top:14px;min-height:200px;max-height:600px;overflow-y:auto;border:1px solid var(--border)}
+.copy-row{display:flex;justify-content:flex-end;margin-top:10px}
+.btn-copy{padding:7px 14px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:12px;font-family:var(--font-mono);cursor:pointer;background:var(--white);color:var(--gray-600);transition:all 0.15s}
+.btn-copy:hover{border-color:var(--black);color:var(--black)}
+.btn-copy.copied{background:var(--black);color:var(--white);border-color:var(--black)}
+
+/* ── Error / Notice ── */
+.notice{padding:12px 16px;border-radius:var(--radius);font-size:13px;margin-bottom:20px}
+.notice-error{background:#fdf0f0;border:1px solid #f5c6c6;color:#c0392b}
+.notice-info{background:var(--gray-50);border:1px solid var(--border);color:var(--gray-600);font-family:var(--font-mono)}
+
+/* ── Responsive ── */
+@media(max-width:600px){
+  .field-row,.field-row-3{grid-template-columns:1fr}
+  .lang-toggle-group{flex-wrap:wrap}
+  .header{padding:20px 0 18px}
+  .auth-title{font-size:22px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="logo">VOX<span>ARTISAN</span></div>
+    <div class="user-pill" id="userPill" style="display:none" onclick="handleSignOut()">
+      <div class="user-initials" id="userInitials">SS</div>
+      <span id="userName"></span>
+    </div>
+  </header>
+  <main id="mainContent"></main>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+const state = {
+  tokens: null,
+  user: { name: 'Toastmaster', email: '', picture: '' },
+  step: 1,
+  totalSteps: 6,
+  formData: {},
+  selectedLangs: ['EN'],
+  checklist: new Array(8).fill(false),
+  speeches: null,
+  currentTab: 'directed',
+  currentLang: 'EN',
+  saveStatus: '',
+  pastSpeeches: [],
+  dashTab: 'new'
+};
+
+const STEP_NAMES = ['Pre-Speech','Metadata','Introduction','Evaluator','Checklist','Languages'];
+const CHECKLIST_ITEMS = [
+  'Hook is vague about content — intrigue without spoiling',
+  'Salutation positioned after initial premise, not at opening',
+  'Word of the day naturally integrated (not announced)',
+  'Humor is present throughout (not just in punchlines)',
+  'Deadpan tone is consistent with delivery register',
+  'No "Thank you" at the end — closing is "Madam/Mister Toastmaster"',
+  'Moral is universal and lands with weight',
+  'Redundancies eliminated — every sentence earns its place'
+];
+
+// ── Init ──────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // No OAuth needed — VoxArtisan is free and open
+  state.tokens = { free: true };
+  render();
+});
+
+// ── Render Router ─────────────────────────────────────────────
+function render() {
+  updateUserPill();
+  if (state.speeches) { renderOutput(); return; }
+  renderDashboard();
+}
+
+function updateUserPill() {
+  if (!state.user) return;
+  const pill = document.getElementById('userPill');
+  pill.style.display = 'flex';
+  document.getElementById('userName').textContent = state.user.name?.split(' ')[0] || '';
+  const initials = (state.user.name || 'SS').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('userInitials').textContent = initials;
+}
+
+// ── Auth (simplified — free public tool) ──────────────────────
+function handleSignOut() {
+  localStorage.removeItem('sb_tokens');
+  localStorage.removeItem('sb_user');
+  state.tokens = null; state.user = null; state.speeches = null;
+  render();
+}
+
+// ── Dashboard ─────────────────────────────────────────────────
+async function renderDashboard() {
+  const mc = document.getElementById('mainContent');
+  mc.innerHTML = `
+    <div class="dash-tabs">
+      <button class="dash-tab ${state.dashTab==='new'?'active':''}" onclick="switchDashTab('new')">New Speech</button>
+      <button class="dash-tab ${state.dashTab==='past'?'active':''}" onclick="switchDashTab('past')">Past Speeches</button>
+    </div>
+    <div class="dash-panel ${state.dashTab==='new'?'active':''}" id="panelNew"></div>
+    <div class="dash-panel ${state.dashTab==='past'?'active':''}" id="panelPast"></div>`;
+  renderStep();
+  if (state.dashTab === 'past') loadPastSpeeches();
+}
+
+function switchDashTab(tab) {
+  state.dashTab = tab;
+  if (tab === 'past') { renderDashboard(); loadPastSpeeches(); }
+  else renderDashboard();
+}
+
+async function loadPastSpeeches() {
+  const panel = document.getElementById('panelPast');
+  if (!panel) return;
+  panel.innerHTML = `<div class="past-empty">Loading...</div>`;
+  try {
+    const res = await fetch('/api/speeches');
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      panel.innerHTML = `<div class="past-empty">No saved speeches yet.<br>Generate your first one.</div>`; return;
+    }
+    panel.innerHTML = data.map(s => {
+      const name = s.title;
+      const date = new Date(s.updated_at * 1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      return `<div class="speech-card" onclick="loadSpeech(${s.id})">
+        <div class="sc-title">${name}</div>
+        <div class="sc-meta">${s.pathway || ''} · ${s.duration || ''} · ${date}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    panel.innerHTML = `<div class="notice notice-error">Could not load past speeches.</div>`;
+  }
+}
+
+async function loadSpeech(speechId) {
+  try {
+    const res = await fetch(`/api/speeches/${speechId}`);
+    const data = await res.json();
+    if (data.form_data && typeof data.form_data === 'object') state.formData = data.form_data;
+    if (data.all_langs && typeof data.all_langs === 'object') {
+      state.speeches = data.all_langs;
+      state.selectedLangs = Object.keys(data.all_langs).filter(k => k !== 'email');
+    }
+    if (data.text && !state.speeches) {
+      // Fallback: treat text as direct speech
+      state.speeches = { EN: { directed: data.text, teleprompter: data.text } };
+      state.selectedLangs = ['EN'];
+    }
+    state.currentLang = state.selectedLangs[0] || 'EN';
+    render();
+  } catch(e) { alert('Failed to load speech.'); }
+}
+
+// ── Step Form ─────────────────────────────────────────────────
+function renderStep() {
+  const panel = document.getElementById('panelNew');
+  if (!panel) return;
+  const dots = Array.from({length:state.totalSteps},(_,i)=>{
+    const n=i+1;
+    const cls = n<state.step?'done':n===state.step?'active':'';
+    return (i>0?'<div class="step-line"></div>':'')+`<div class="step-dot ${cls}">${n<state.step?'✓':n}</div>`;
+  }).join('');
+  const stepContent = getStepContent();
+  panel.innerHTML = `
+    <div class="step-indicator">${dots}</div>
+    <div class="step-label">Step <span>${state.step} of ${state.totalSteps}</span> — ${STEP_NAMES[state.step-1]}</div>
+    ${stepContent}`;
+  attachStepListeners();
+}
+
+function getStepContent() {
+  const d = state.formData;
+  switch(state.step) {
+    case 1: return `
+      <div class="section-title">Pre-Speech Setup</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div><label>Target Duration (minutes)</label>
+            <select id="f_duration">
+              ${[3,4,5,6,7,8,10].map(n=>`<option value="${n}" ${d.duration==n?'selected':''}>${n} minutes</option>`).join('')}
+            </select></div>
+          <div><label>Humor Tone</label>
+            <select id="f_humorTone">
+              ${['Deadpan','Self-deprecating','Absurdist','Dry wit','Observational','Satirical'].map(t=>`<option value="${t}" ${d.humorTone===t?'selected':''}>${t}</option>`).join('')}
+            </select></div>
+        </div>
+      </div>
+      <div class="section-title">Word of the Day</div>
+      <div class="field-row-3">
+        <div><label>English</label><input id="f_wordEN" type="text" placeholder="e.g. Steady" value="${d.wordEN||''}"></div>
+        <div><label>French</label><input id="f_wordFR" type="text" placeholder="e.g. Régulier" value="${d.wordFR||''}"></div>
+        <div><label>Spanish</label><input id="f_wordES" type="text" placeholder="e.g. Constante" value="${d.wordES||''}"></div>
+      </div>
+      ${btnRow(false, true)}`;
+
+    case 2: return `
+      <div class="section-title">Speech Metadata</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div><label>Pathway</label><input id="f_pathway" type="text" placeholder="Engaging Humor" value="${d.pathway||'Engaging Humor'}"></div>
+          <div><label>Level</label><select id="f_level">${[1,2,3,4,5].map(n=>`<option ${d.level==n?'selected':''}>${n}</option>`).join('')}</select></div>
+        </div>
+        <div class="field-group"><label>Project Name</label><input id="f_project" type="text" placeholder="e.g. Ice Breaker" value="${d.project||''}"></div>
+        <div class="field-group"><label>Club Name</label><input id="f_club" type="text" placeholder="CEO Toastmasters" value="${d.club||'CEO Toastmasters'}"></div>
+      </div>
+      <div class="section-title">Speech Titles</div>
+      <div class="field-group"><label>English Title</label><input id="f_titleEN" type="text" placeholder="e.g. The Impossible Mission" value="${d.titleEN||''}"></div>
+      <div class="field-row">
+        <div><label>French Title</label><input id="f_titleFR" type="text" placeholder="e.g. La Mission Impossible" value="${d.titleFR||''}"></div>
+        <div><label>Spanish Title</label><input id="f_titleES" type="text" placeholder="e.g. La Misión Imposible" value="${d.titleES||''}"></div>
+      </div>
+      ${btnRow(true, true)}`;
+
+    case 3: return `
+      <div class="section-title">Introduction for Toastmaster / Evaluator</div>
+      <div class="notice notice-info">This introduction is delivered by the Toastmaster of the Day before your speech. Keep it vague — no spoilers.</div>
+      <div class="field-group"><label>Opening Hook Line</label>
+        <input id="f_hook" type="text" placeholder="e.g. Something strange happened to me yesterday." value="${d.hook||''}">
+        <div class="field-hint">First line — vague, intriguing, sets the premise without revealing the story</div>
+      </div>
+      <div class="field-group"><label>Context / Setup for Evaluator</label>
+        <textarea id="f_context" placeholder="Brief description of what the speech is about (not shown to audience — for evaluator only)">${d.context||''}</textarea>
+      </div>
+      ${btnRow(true, true)}`;
+
+    case 4: return `
+      <div class="section-title">Evaluator Information</div>
+      <div class="field-group"><label>Evaluator Name</label><input id="f_evaluatorName" type="text" placeholder="Full name" value="${d.evaluatorName||''}"></div>
+      <div class="field-row">
+        <div><label>Evaluator's Club</label><input id="f_evaluatorClub" type="text" placeholder="Club name" value="${d.evaluatorClub||''}"></div>
+        <div><label>Delivery Date</label><input id="f_deliveryDate" type="date" value="${d.deliveryDate||''}"></div>
+      </div>
+      ${btnRow(true, true)}`;
+
+    case 5: return `
+      <div class="section-title">Pre-Generation Checklist</div>
+      <div class="notice notice-info">Check each item before generating. A strong checklist = a stronger speech.</div>
+      <ul class="checklist">
+        ${CHECKLIST_ITEMS.map((item,i)=>`
+          <li>
+            <div class="check-box ${state.checklist[i]?'checked':''}" onclick="toggleCheck(${i})"></div>
+            <span>${item}</span>
+          </li>`).join('')}
+      </ul>
+      ${btnRow(true, true)}`;
+
+    case 6: return `
+      <div class="section-title">Select Languages</div>
+      <div class="notice notice-info">Choose one, two, or all three. Gemini generates only your selected languages.</div>
+      <div style="margin:8px 0 28px">
+        <label>Generate speech in</label>
+        <div class="lang-toggle-group">
+          <div class="lang-toggle ${state.selectedLangs.includes('EN')?'selected':''}" onclick="toggleLang('EN')">EN · English</div>
+          <div class="lang-toggle ${state.selectedLangs.includes('FR')?'selected':''}" onclick="toggleLang('FR')">FR · Français</div>
+          <div class="lang-toggle ${state.selectedLangs.includes('ES')?'selected':''}" onclick="toggleLang('ES')">ES · Español</div>
+        </div>
+        <div class="field-hint" style="margin-top:10px">${state.selectedLangs.length} language${state.selectedLangs.length!==1?'s':''} selected</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="prevStep()">← Back</button>
+        <button class="btn btn-primary" onclick="generateSpeech()" ${state.selectedLangs.length===0?'disabled':''}>Generate Speech →</button>
+      </div>`;
+  }
+}
+
+function btnRow(showBack, showNext) {
+  return `<div class="btn-row">
+    ${showBack?'<button class="btn btn-ghost" onclick="prevStep()">← Back</button>':'<div></div>'}
+    ${showNext?'<button class="btn btn-primary" onclick="nextStep()">Continue →</button>':''}
+  </div>`;
+}
+
+function attachStepListeners() {}
+
+function collectFormData() {
+  const fields = ['duration','humorTone','wordEN','wordFR','wordES','pathway','level','project','club','titleEN','titleFR','titleES','hook','context','evaluatorName','evaluatorClub','deliveryDate'];
+  fields.forEach(id => {
+    const el = document.getElementById('f_'+id);
+    if (el) state.formData[id] = el.value;
+  });
+}
+
+function nextStep() {
+  collectFormData();
+  if (state.step < state.totalSteps) { state.step++; renderStep(); }
+}
+function prevStep() {
+  collectFormData();
+  if (state.step > 1) { state.step--; renderStep(); }
+}
+
+function toggleCheck(i) {
+  state.checklist[i] = !state.checklist[i];
+  renderStep();
+}
+
+function toggleLang(lang) {
+  const idx = state.selectedLangs.indexOf(lang);
+  if (idx > -1) { if (state.selectedLangs.length > 1) state.selectedLangs.splice(idx,1); }
+  else state.selectedLangs.push(lang);
+  renderStep();
+}
+
+// ── Generate ─────────────────────────────────────────────────
+async function generateSpeech() {
+  collectFormData();
+  const panel = document.getElementById('panelNew');
+  panel.innerHTML = `<div class="generating">
+    <div class="gen-spinner"></div>
+    <div class="gen-label">Gemini is writing your speech...<br><span style="font-size:11px;color:var(--gray-400)">This may take 20–40 seconds for multiple languages</span></div>
+  </div>`;
+
+  try {
+    // Build payload for the Worker API
+    const d = state.formData;
+    const payload = {
+      topic: d.titleEN || d.topic || '',
+      pathway: d.pathway || '',
+      project: `${d.project || ''}${d.level ? ` Level ${d.level}` : ''}`.trim(),
+      duration: `${d.duration || 5} minutes`,
+      tone: d.humorTone || 'professional',
+      intro_style: 'Bold Statement',
+      closing_technique: 'Callback to Opening',
+      language: (state.selectedLangs[0] || 'EN') === 'EN' ? 'English' :
+                (state.selectedLangs[0] === 'FR' ? 'French' : 'Spanish'),
+      key_points: [d.hook, d.context].filter(Boolean).join('. '),
+      audience: d.club || 'Toastmasters club',
+      central_message: d.context || '',
+    };
+    const res = await fetch('/api/generate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    if (!res.ok || result.error) throw new Error(result.error || 'Generation failed');
+    // Worker returns { speech: "text" } — wrap for SPA compatibility
+    state.speeches = { EN: { directed: result.speech, teleprompter: result.speech } };
+    state.currentTab = 'directed';
+    state.currentLang = state.selectedLangs[0];
+    state.saveStatus = '';
+    render();
+  } catch(e) {
+    panel.innerHTML = `<div class="notice notice-error" style="margin-top:24px">Generation failed: ${e.message}</div>
+      <div class="btn-row"><button class="btn btn-ghost" onclick="state.step=6;render()">← Back</button></div>`;
+  }
+}
+
+// ── Output ────────────────────────────────────────────────────
+function renderOutput() {
+  const d = state.formData;
+  const mc = document.getElementById('mainContent');
+  const langTabs = state.selectedLangs.map(l=>`<button class="lang-sub-tab ${state.currentLang===l?'active':''}" onclick="setLang('${l}')">${l}</button>`).join('');
+  const content = getTabContent();
+  const saveLabel = state.saveStatus==='saving'?'Saving...' : state.saveStatus==='saved'?'✓ Speech saved' : state.saveStatus==='error'?'Save failed' : '';
+  const saveCls = state.saveStatus==='saved'?'saved':'';
+
+  mc.innerHTML = `
+    <div class="output-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="output-title">${d.titleEN || 'Generated Speech'}</div>
+        <button class="btn btn-ghost" onclick="startNew()" style="font-size:13px">New Speech</button>
+      </div>
+      <div class="output-meta">${d.pathway} · Level ${d.level} · ${d.duration}min · ${d.club}</div>
+      <div class="output-save-row">
+        <button class="btn btn-primary" onclick="saveSpeech()" ${state.saveStatus==='saving'?'disabled':''} style="font-size:13px;padding:8px 16px">Save Speech</button>
+        <span class="save-status ${saveCls}">${saveLabel}</span>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn ${state.currentTab==='directed'?'active':''}" onclick="setTab('directed')">Directed</button>
+      <button class="tab-btn ${state.currentTab==='teleprompter'?'active':''}" onclick="setTab('teleprompter')">Teleprompter</button>
+      <button class="tab-btn ${state.currentTab==='email'?'active':''}" onclick="setTab('email')">Email</button>
+    </div>
+    <div style="padding:0 0 24px">
+      ${state.currentTab !== 'email' ? `<div class="lang-sub-tabs">${langTabs}</div>` : ''}
+      ${content}
+    </div>`;
+}
+
+function getTabContent() {
+  const s = state.speeches;
+  if (!s) return '';
+  if (state.currentTab === 'email') {
+    return `<div class="email-text">${escHtml(s.email||'No email generated.')}</div>
+      <div class="copy-row"><button class="btn-copy" onclick="copyText('email-text')">Copy Email</button></div>`;
+  }
+  const langData = s[state.currentLang];
+  if (!langData) return `<div class="notice notice-info">No content for ${state.currentLang}</div>`;
+  const text = state.currentTab === 'directed' ? langData.directed : langData.teleprompter;
+  const cls = state.currentTab === 'teleprompter' ? 'speech-text teleprompter' : 'speech-text';
+  const label = state.currentTab === 'directed' ? 'Copy Directed' : 'Copy Teleprompter';
+  return `<div class="${cls}" id="speechTextEl">${escHtml(text || 'Content not available.')}</div>
+    <div class="copy-row"><button class="btn-copy" onclick="copyText('speechTextEl')">${label}</button></div>`;
+}
+
+function setTab(tab) { state.currentTab = tab; renderOutput(); }
+function setLang(lang) { state.currentLang = lang; renderOutput(); }
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyText(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(()=>{
+    el.previousElementSibling?.classList.add('copied');
+    const btn = document.querySelector('.btn-copy');
+    if (btn) { const orig=btn.textContent; btn.textContent='Copied!'; btn.classList.add('copied'); setTimeout(()=>{btn.textContent=orig;btn.classList.remove('copied')},1800); }
+  });
+}
+
+async function saveSpeech() {
+  state.saveStatus = 'saving';
+  renderOutput();
+  const d = state.formData;
+  const speechText = state.speeches?.EN?.directed || '';
+  try {
+    const res = await fetch('/api/speeches', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        title: d.titleEN || 'Untitled Speech',
+        pathway: d.pathway || '',
+        project: `${d.project || ''}${d.level ? ` Level ${d.level}` : ''}`.trim(),
+        duration: `${d.duration || 5} minutes`,
+        topic: d.titleEN || '',
+        language: state.selectedLangs[0] || 'EN',
+        text: speechText,
+        form_data: state.formData,
+        all_langs: state.speeches,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
+    state.saveStatus = 'saved';
+    renderOutput();
+  } catch(e) {
+    state.saveStatus = 'error';
+    renderOutput();
+  }
+}
+
+function startNew() {
+  state.speeches = null; state.step = 1; state.formData = {}; state.checklist = new Array(8).fill(false);
+  state.selectedLangs = ['EN']; state.saveStatus = ''; state.dashTab = 'new';
+  render();
+}
+</script>
+</body>
+</html>
