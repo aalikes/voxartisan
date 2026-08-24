@@ -369,7 +369,7 @@ function getStepContent() {
 
     case 6: return `
       <div class="section-title">Select Languages</div>
-      <div class="notice notice-info">Choose one, two, or all three. Gemini generates only your selected languages.</div>
+      <div class="notice notice-info">Choose one, two, or all three. Only your selected languages are generated.</div>
       <div style="margin:8px 0 28px">
         <label>Generate speech in</label>
         <div class="lang-toggle-group">
@@ -430,7 +430,7 @@ async function generateSpeech() {
   const panel = document.getElementById('panelNew');
   panel.innerHTML = `<div class="generating">
     <div class="gen-spinner"></div>
-    <div class="gen-label">Gemini is writing your speech...<br><span style="font-size:11px;color:var(--gray-400)">This may take 20–40 seconds for multiple languages</span></div>
+    <div class="gen-label">Writing your speech...<br><span style="font-size:11px;color:var(--gray-400)">This may take 20–40 seconds for multiple languages</span></div>
   </div>`;
 
   try {

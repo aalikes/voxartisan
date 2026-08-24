@@ -1,8 +1,19 @@
-// POST /api/generate — AI speech generation via Gemini
+// POST /api/generate — AI speech generation via Cloudflare Workers AI
 import { json, error, handleOptions, corsHeaders } from '../_shared.js';
 
-// Gemini REST API
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+// Workers AI runs on Cloudflare's own infrastructure via the `AI` binding —
+// no external API key, no secret to rotate. Override the model per-environment
+// with the AI_MODEL var if a better one ships.
+const DEFAULT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+
+// The model tops out at 24k tokens of context and 24k of output. A speech plus
+// speaker notes lands well under this even at the long end.
+const MAX_TOKENS = 8192;
+
+const SYSTEM_PROMPT =
+  'You are a World Class Public Speaking Coach and Speechwriter. ' +
+  'You return the finished speech only — no preamble, no commentary on your own work, ' +
+  'and no markdown code fences around the output.';
 
 // ── Prompt builders ──────────────────────────────────────────────
 
@@ -140,43 +151,36 @@ export async function onRequestPost(context) {
   try {
     const data = await request.json();
     const prompt = buildGeneratePrompt(data);
-    const apiKey = env.GEMINI_API_KEY;
 
-    if (!apiKey) {
-      return error('GEMINI_API_KEY not configured. Set it with: wrangler secret put GEMINI_API_KEY', 500);
+    if (!env.AI) {
+      return error('Workers AI binding not available. Add [ai] binding = "AI" to wrangler.toml.', 500);
     }
 
-    const url = `${GEMINI_API_BASE}?key=${apiKey}`;
-    const geminiResp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.9,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 8192,
-        },
-      }),
+    const model = env.AI_MODEL || DEFAULT_MODEL;
+
+    const result = await env.AI.run(model, {
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: MAX_TOKENS,
+      temperature: 0.9,
+      top_p: 0.95,
     });
 
-    if (!geminiResp.ok) {
-      const errText = await geminiResp.text();
-      return error(`Gemini API error: ${geminiResp.status} — ${errText.slice(0, 300)}`, 502);
-    }
-
-    const result = await geminiResp.json();
-    const speech = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    // Text-generation models return { response: "..." }.
+    const speech = (result?.response || '').trim();
 
     if (!speech) {
-      return error('Gemini returned empty response', 502);
+      return error('Workers AI returned an empty response', 502);
     }
 
     // Return in the format the SPA expects: { speech: "full text" }
     return json({ speech });
 
   } catch (e) {
-    return error(e.message, 500);
+    // The binding throws on quota exhaustion and on an unknown model ID —
+    // both read as opaque 500s otherwise, so name the model in the message.
+    return error(`Workers AI error (${env.AI_MODEL || DEFAULT_MODEL}): ${e.message}`, 502);
   }
 }

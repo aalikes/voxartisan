@@ -3,6 +3,11 @@ compatibility_date = "2025-07-12"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "."
 
+# Workers AI — speech generation runs on Cloudflare's own models.
+# No API key: the binding authenticates through the account itself.
+[ai]
+binding = "AI"
+
 # D1 Database for speech storage
 [[d1_databases]]
 binding = "DB"
