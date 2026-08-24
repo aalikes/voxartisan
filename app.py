@@ -6,7 +6,6 @@ from io import BytesIO
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, Response, stream_with_context
 from flask_session import Session
 from dotenv import load_dotenv
-import google.generativeai as genai
 from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token, credentials as google_credentials
 from google.auth.transport import requests as google_requests
@@ -81,9 +80,106 @@ def add_security_headers(response):
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     return response
 
-# ── Gemini AI ────────────────────────────────────────────────────────────────
+# ── DeepSeek AI ──────────────────────────────────────────────────────────────
 
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_URL     = "https://api.deepseek.com/chat/completions"
+DEEPSEEK_MODEL   = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
+
+# Speech work is creative rather than analytical, so thinking tokens mostly buy
+# latency here. Raise with DEEPSEEK_REASONING_EFFORT ('low' | 'high' | 'max').
+DEEPSEEK_EFFORT = os.environ.get("DEEPSEEK_REASONING_EFFORT", "low")
+
+# Kept under gunicorn's 120s worker timeout (see Procfile) so a slow upstream
+# returns an error instead of taking the worker down with it.
+DEEPSEEK_TIMEOUT = 100
+
+DEEPSEEK_SYSTEM = (
+    "You are a World Class Public Speaking Coach and Speechwriter. "
+    "Return the finished work only — no preamble, no commentary on your own "
+    "work, and no markdown code fences around the output."
+)
+
+# DeepSeek honours response_format only when the prompt also mentions json.
+DEEPSEEK_SYSTEM_JSON = (
+    DEEPSEEK_SYSTEM + " Respond with a single valid json object and nothing else."
+)
+
+
+class DeepSeekError(RuntimeError):
+    """DeepSeek was unreachable, unconfigured, or returned nothing usable."""
+
+
+def _deepseek_chat(prompt, json_mode=False, max_tokens=8192):
+    """Call DeepSeek and return the assistant's text.
+
+    Reads `content` only. With thinking mode on, the model's reasoning arrives
+    in a sibling `reasoning_content` field that must never reach the user.
+    """
+    if not DEEPSEEK_API_KEY:
+        raise DeepSeekError("DEEPSEEK_API_KEY is not configured")
+
+    payload = {
+        "model": DEEPSEEK_MODEL,
+        "messages": [
+            {"role": "system",
+             "content": DEEPSEEK_SYSTEM_JSON if json_mode else DEEPSEEK_SYSTEM},
+            {"role": "user", "content": prompt},
+        ],
+        "reasoning_effort": DEEPSEEK_EFFORT,
+        "max_tokens": max_tokens,
+        "temperature": 0.9,
+        "stream": False,
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+
+    try:
+        resp = requests.post(
+            DEEPSEEK_URL,
+            json=payload,
+            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
+            timeout=DEEPSEEK_TIMEOUT,
+        )
+    except requests.RequestException as e:
+        raise DeepSeekError(f"DeepSeek request failed: {e}")
+
+    if not resp.ok:
+        raise DeepSeekError(
+            f"DeepSeek API error {resp.status_code}: {resp.text[:300]}"
+        )
+
+    choice = (resp.json().get("choices") or [{}])[0]
+    text = ((choice.get("message") or {}).get("content") or "").strip()
+
+    if not text:
+        # JSON mode can return empty content; finish_reason separates a
+        # truncation from a refusal.
+        raise DeepSeekError(
+            f"DeepSeek returned no text (finish_reason: {choice.get('finish_reason')})"
+        )
+    return text
+
+
+def _deepseek_json(prompt, max_tokens=8192):
+    """Call DeepSeek in JSON mode and parse the result.
+
+    JSON mode should make fences impossible, but strip them defensively so a
+    stray wrapper degrades to a successful parse rather than a 500.
+    """
+    text = _deepseek_chat(prompt, json_mode=True, max_tokens=max_tokens)
+
+    if text.startswith("```"):
+        parts = text.split("```")
+        if len(parts) > 1:
+            text = parts[1]
+        if text.startswith("json"):
+            text = text[4:]
+
+    try:
+        return json.loads(text.strip())
+    except json.JSONDecodeError as e:
+        raise DeepSeekError(f"DeepSeek returned malformed JSON: {e}")
 
 # ── ElevenLabs ───────────────────────────────────────────────────────────────
 
@@ -561,9 +657,9 @@ End with the formal Toastmasters handoff: "Back to you, Mister — or Madam — 
 Estimated word count and speaking time."""
 
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        response = model.generate_content(prompt)
-        return jsonify({"speech": response.text})
+        return jsonify({"speech": _deepseek_chat(prompt)})
+    except DeepSeekError as e:
+        return jsonify({"error": str(e)}), 502
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -620,16 +716,9 @@ Titles: punchy, memorable, fit the tone and subject.
 Intros: complete speakable sentences (2-3 sentences max), first intro MUST use the "{intro_style}" technique, the other two use varied alternatives. IMPORTANT: These are HOOK openings only — no Toastmasters salutation yet.{lang_instruction}"""
 
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-        # Strip markdown code fences if Gemini wraps in ```json ... ```
-        if text.startswith("```"):
-            text = text.split("```")[1]
-            if text.startswith("json"):
-                text = text[4:]
-        result = json.loads(text.strip())
-        return jsonify(result)
+        return jsonify(_deepseek_json(prompt))
+    except DeepSeekError as e:
+        return jsonify({"error": str(e)}), 502
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -669,15 +758,9 @@ SPEECH:
 {speech}"""
 
     try:
-        model    = genai.GenerativeModel("gemini-2.5-flash")
-        response = model.generate_content(prompt)
-        text     = response.text.strip()
-        if text.startswith("```"):
-            text = text.split("```")[1]
-            if text.startswith("json"):
-                text = text[4:]
-        result = json.loads(text.strip())
-        return jsonify(result)
+        return jsonify(_deepseek_json(prompt, max_tokens=16384))
+    except DeepSeekError as e:
+        return jsonify({"error": str(e)}), 502
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -702,9 +785,9 @@ REFINEMENT INSTRUCTION:
 Return the improved full speech text only."""
 
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        response = model.generate_content(prompt)
-        return jsonify({"speech": response.text})
+        return jsonify({"speech": _deepseek_chat(prompt)})
+    except DeepSeekError as e:
+        return jsonify({"error": str(e)}), 502
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
