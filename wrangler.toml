@@ -3,6 +3,10 @@ compatibility_date = "2025-07-12"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "."
 
+# Speech generation calls the DeepSeek API directly.
+# DEEPSEEK_API_KEY is a secret, not a var — set it with:
+#   wrangler pages secret put DEEPSEEK_API_KEY
+
 # D1 Database for speech storage
 [[d1_databases]]
 binding = "DB"
