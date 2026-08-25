@@ -232,12 +232,29 @@ function switchDashTab(tab) {
   else renderDashboard();
 }
 
+// ── API access ────────────────────────────────────────────────
+// NOT A SECRET. This page is public static HTML, so this value is visible to
+// anyone who opens View Source. It gates /api/* against bots and endpoint
+// scanners — which matters because the AI routes spend DeepSeek credit per
+// call — but it does not authenticate anyone. For real access control, put
+// Cloudflare Access in front of the project.
+//
+// Must match the API_SHARED_SECRET environment variable on the Pages project.
+const API_KEY = '__SET_ME__';
+
+function apiFetch(url, opts = {}) {
+  return fetch(url, {
+    ...opts,
+    headers: { ...(opts.headers || {}), 'X-VoxArtisan-Key': API_KEY },
+  });
+}
+
 async function loadPastSpeeches() {
   const panel = document.getElementById('panelPast');
   if (!panel) return;
   panel.innerHTML = `<div class="past-empty">Loading...</div>`;
   try {
-    const res = await fetch('/api/speeches');
+    const res = await apiFetch('/api/speeches');
     const data = await res.json();
     if (!Array.isArray(data) || data.length === 0) {
       panel.innerHTML = `<div class="past-empty">No saved speeches yet.<br>Generate your first one.</div>`; return;
@@ -257,7 +274,7 @@ async function loadPastSpeeches() {
 
 async function loadSpeech(speechId) {
   try {
-    const res = await fetch(`/api/speeches/${speechId}`);
+    const res = await apiFetch(`/api/speeches/${speechId}`);
     const data = await res.json();
     if (data.form_data && typeof data.form_data === 'object') state.formData = data.form_data;
     if (data.all_langs && typeof data.all_langs === 'object') {
@@ -450,7 +467,7 @@ async function generateSpeech() {
       audience: d.club || 'Toastmasters club',
       central_message: d.context || '',
     };
-    const res = await fetch('/api/generate', {
+    const res = await apiFetch('/api/generate', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
@@ -539,7 +556,7 @@ async function saveSpeech() {
   const d = state.formData;
   const speechText = state.speeches?.EN?.directed || '';
   try {
-    const res = await fetch('/api/speeches', {
+    const res = await apiFetch('/api/speeches', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         title: d.titleEN || 'Untitled Speech',
