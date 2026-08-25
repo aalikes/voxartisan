@@ -1,7 +1,4 @@
 // Shared DeepSeek client for the API routes.
-//
-// Mirrors the helpers in app.py so both runtimes behave identically: same
-// model defaults, same JSON-mode contract, same error taxonomy.
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 
