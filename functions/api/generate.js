@@ -1,25 +1,6 @@
 // POST /api/generate — AI speech generation via the DeepSeek API
 import { json, error, handleOptions, corsHeaders } from '../_shared.js';
-
-// DeepSeek's OpenAI-compatible chat completions endpoint.
-const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
-
-// The deepseek-chat / deepseek-reasoner aliases retired 2026-07-24; the V4
-// lineup replaces them. Override per-environment with the DEEPSEEK_MODEL var.
-const DEFAULT_MODEL = 'deepseek-v4-flash';
-
-// Writing a speech is a creative task, not a reasoning one — extra thinking
-// buys little here and costs latency the user waits through. Raise it with
-// DEEPSEEK_REASONING_EFFORT ('low' | 'high' | 'max') if output needs more rigor.
-const DEFAULT_REASONING_EFFORT = 'low';
-
-// V4 carries a 1M-token context, so only the output cap is worth setting.
-const MAX_TOKENS = 8192;
-
-const SYSTEM_PROMPT =
-  'You are a World Class Public Speaking Coach and Speechwriter. ' +
-  'You return the finished speech only — no preamble, no commentary on your own work, ' +
-  'and no markdown code fences around the output.';
+import { deepseekChat, statusFor } from '../_deepseek.js';
 
 // ── Prompt builders ──────────────────────────────────────────────
 
@@ -156,56 +137,10 @@ export async function onRequestPost(context) {
 
   try {
     const data = await request.json();
-    const prompt = buildGeneratePrompt(data);
-
-    const apiKey = env.DEEPSEEK_API_KEY;
-
-    if (!apiKey) {
-      return error('DEEPSEEK_API_KEY not configured. Set it with: wrangler pages secret put DEEPSEEK_API_KEY', 500);
-    }
-
-    const model = env.DEEPSEEK_MODEL || DEFAULT_MODEL;
-
-    const resp = await fetch(DEEPSEEK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: prompt },
-        ],
-        reasoning_effort: env.DEEPSEEK_REASONING_EFFORT || DEFAULT_REASONING_EFFORT,
-        max_tokens: MAX_TOKENS,
-        temperature: 0.9,
-        top_p: 0.95,
-        stream: false,
-      }),
-    });
-
-    if (!resp.ok) {
-      const errText = await resp.text();
-      return error(`DeepSeek API error: ${resp.status} — ${errText.slice(0, 300)}`, 502);
-    }
-
-    const result = await resp.json();
-
-    // Read `content` only. With thinking mode on, the model's reasoning arrives
-    // in a sibling `reasoning_content` field — it must never reach the speech.
-    const speech = (result?.choices?.[0]?.message?.content || '').trim();
-
-    if (!speech) {
-      const reason = result?.choices?.[0]?.finish_reason;
-      return error(`DeepSeek returned no speech text${reason ? ` (finish_reason: ${reason})` : ''}`, 502);
-    }
 
     // Return in the format the SPA expects: { speech: "full text" }
-    return json({ speech });
-
+    return json({ speech: await deepseekChat(env, buildGeneratePrompt(data)) });
   } catch (e) {
-    return error(e.message, 500);
+    return error(e.message, statusFor(e));
   }
 }
