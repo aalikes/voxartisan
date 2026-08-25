@@ -1,14 +1,10 @@
-__pycache__/
-*.pyc
-*.pyo
 .env
 .env.local
-flask_session/
-*.sqlite
 .DS_Store
-venv/
-.venv/
-.pytest_cache/
-tests/__pycache__/
-drive_token.json
+*.sqlite
 *.test.db
+node_modules/
+
+# Wrangler's local cache. Holds the Cloudflare account id and a connection
+# trace with approximate location — not things to publish.
+.wrangler/

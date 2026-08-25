@@ -1,9 +1,24 @@
-// CORS + shared headers for all API routes
+// CORS + shared headers for all API routes.
+//
+// Access-Control-Allow-Origin is deliberately NOT set here. Routes build their
+// responses without it, and the /api middleware adds it back only when the
+// request's Origin is on the allowlist — see applyCors() below.
+
+// Cross-origin callers permitted by default. Override per-environment with
+// ALLOWED_ORIGINS (comma-separated) — e.g. to add a preview or staging host.
+//
+// Keeping this list short costs nothing: the SPA calls its own origin, and
+// same-origin requests are not subject to CORS at all. Entries here are only
+// for genuine cross-origin use.
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://voxartisan.sapeurhaitien.com',
+  'https://voxartisan.pages.dev',
+];
+
 export function corsHeaders() {
   return {
-    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-VoxArtisan-Key',
     'Content-Type': 'application/json',
   };
 }
@@ -18,4 +33,66 @@ export function json(data, status = 200) {
 
 export function error(msg, status = 500) {
   return new Response(JSON.stringify({ error: msg }), { status, headers: corsHeaders() });
+}
+
+/**
+ * Strip credentials out of text before it reaches a client.
+ *
+ * Upstream error bodies are not safe to relay verbatim. Google's 403 for a
+ * suspended key quotes the key back at you, so relaying the body handed our
+ * Gemini key to anyone who could trigger the error. Assume every provider may
+ * do this.
+ *
+ * `secrets` are the exact values we hold — redacting those is the reliable
+ * part. The patterns catch key shapes we might not be holding (a key belonging
+ * to something else in the request chain).
+ */
+export function redact(text, ...secrets) {
+  let out = String(text);
+
+  for (const s of secrets) {
+    if (s && s.length >= 8) out = out.split(s).join('«redacted»');
+  }
+
+  return out
+    .replace(/AIza[0-9A-Za-z_-]{10,}/g, '«redacted»')        // Google
+    .replace(/\bsk-[A-Za-z0-9_-]{10,}/g, '«redacted»')       // OpenAI / DeepSeek
+    .replace(/\bxi-[A-Za-z0-9_-]{10,}/g, '«redacted»')       // ElevenLabs
+    .replace(/\b[A-Fa-f0-9]{32,}\b/g, '«redacted»');         // bare hex tokens
+}
+
+export function allowedOrigins(env) {
+  const raw = env.ALLOWED_ORIGINS;
+  const list = raw ? raw.split(',') : DEFAULT_ALLOWED_ORIGINS;
+  return list.map(s => s.trim()).filter(Boolean);
+}
+
+/**
+ * Return a copy of `resp` with the right Allow-Origin for this request.
+ *
+ * An unrecognised Origin gets no Allow-Origin header at all, so the browser
+ * discards the response. Previously this was `*`, which — combined with a
+ * shared key that is readable in the SPA's source — let any third-party page
+ * spend our DeepSeek credit from a visitor's browser.
+ *
+ * A request with no Origin header is same-origin or non-browser. Same-origin
+ * is exempt from CORS entirely, so the SPA never depends on this; and CORS
+ * cannot restrain curl either way. Both are left alone.
+ *
+ * Vary: Origin keeps a cache from serving one origin's Allow-Origin to another.
+ */
+export function applyCors(resp, request, env) {
+  const headers = new Headers(resp.headers);
+  headers.set('Vary', 'Origin');
+
+  const origin = request.headers.get('Origin');
+  if (origin && allowedOrigins(env).includes(origin)) {
+    headers.set('Access-Control-Allow-Origin', origin);
+  }
+
+  return new Response(resp.body, {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers,
+  });
 }

@@ -1,8 +1,6 @@
-// POST /api/generate — AI speech generation via Gemini
+// POST /api/generate — AI speech generation via the DeepSeek API
 import { json, error, handleOptions, corsHeaders } from '../_shared.js';
-
-// Gemini REST API
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+import { deepseekChat, statusFor } from '../_deepseek.js';
 
 // ── Prompt builders ──────────────────────────────────────────────
 
@@ -139,44 +137,10 @@ export async function onRequestPost(context) {
 
   try {
     const data = await request.json();
-    const prompt = buildGeneratePrompt(data);
-    const apiKey = env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return error('GEMINI_API_KEY not configured. Set it with: wrangler secret put GEMINI_API_KEY', 500);
-    }
-
-    const url = `${GEMINI_API_BASE}?key=${apiKey}`;
-    const geminiResp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.9,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 8192,
-        },
-      }),
-    });
-
-    if (!geminiResp.ok) {
-      const errText = await geminiResp.text();
-      return error(`Gemini API error: ${geminiResp.status} — ${errText.slice(0, 300)}`, 502);
-    }
-
-    const result = await geminiResp.json();
-    const speech = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    if (!speech) {
-      return error('Gemini returned empty response', 502);
-    }
 
     // Return in the format the SPA expects: { speech: "full text" }
-    return json({ speech });
-
+    return json({ speech: await deepseekChat(env, buildGeneratePrompt(data)) });
   } catch (e) {
-    return error(e.message, 500);
+    return error(e.message, statusFor(e));
   }
 }
