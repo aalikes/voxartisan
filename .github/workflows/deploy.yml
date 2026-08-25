@@ -30,8 +30,15 @@ jobs:
       # Calling wrangler directly rather than via a third-party action: one
       # fewer dependency to trust, and the major version is pinned so a
       # breaking release cannot silently change what ships.
+      #
+      # The account id is inline on purpose. It is an identifier, not a
+      # credential — it appears in every dashboard URL and was committed to
+      # this repo until recently — and holding it alone grants nothing. That
+      # leaves exactly one secret to configure, which is one fewer thing to
+      # get wrong: the first run of this workflow failed because both secrets
+      # resolved empty.
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: b00e9b8e78a5ff6f69986d3cc057b473
         run: npx --yes wrangler@4 pages deploy --project-name=voxartisan --branch=main
