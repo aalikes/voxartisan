@@ -1,5 +1,5 @@
 // POST /api/tts — narrate a speech via ElevenLabs, streamed back as audio
-import { error, handleOptions } from '../../_shared.js';
+import { error, handleOptions, redact } from '../../_shared.js';
 
 const TTS_URL = 'https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream';
 
@@ -62,7 +62,9 @@ export async function onRequestPost(context) {
     });
 
     if (!upstream.ok) {
-      const errText = await upstream.text();
+      // Scrubbed, not relayed raw: providers quote the offending credential
+      // back at you, which would leak our key to whoever triggered the error.
+      const errText = redact(await upstream.text(), apiKey);
       return error(`ElevenLabs ${upstream.status}: ${errText.slice(0, 300)}`, 502);
     }
 

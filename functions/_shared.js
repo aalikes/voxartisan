@@ -35,6 +35,32 @@ export function error(msg, status = 500) {
   return new Response(JSON.stringify({ error: msg }), { status, headers: corsHeaders() });
 }
 
+/**
+ * Strip credentials out of text before it reaches a client.
+ *
+ * Upstream error bodies are not safe to relay verbatim. Google's 403 for a
+ * suspended key quotes the key back at you, so relaying the body handed our
+ * Gemini key to anyone who could trigger the error. Assume every provider may
+ * do this.
+ *
+ * `secrets` are the exact values we hold — redacting those is the reliable
+ * part. The patterns catch key shapes we might not be holding (a key belonging
+ * to something else in the request chain).
+ */
+export function redact(text, ...secrets) {
+  let out = String(text);
+
+  for (const s of secrets) {
+    if (s && s.length >= 8) out = out.split(s).join('«redacted»');
+  }
+
+  return out
+    .replace(/AIza[0-9A-Za-z_-]{10,}/g, '«redacted»')        // Google
+    .replace(/\bsk-[A-Za-z0-9_-]{10,}/g, '«redacted»')       // OpenAI / DeepSeek
+    .replace(/\bxi-[A-Za-z0-9_-]{10,}/g, '«redacted»')       // ElevenLabs
+    .replace(/\b[A-Fa-f0-9]{32,}\b/g, '«redacted»');         // bare hex tokens
+}
+
 export function allowedOrigins(env) {
   const raw = env.ALLOWED_ORIGINS;
   const list = raw ? raw.split(',') : DEFAULT_ALLOWED_ORIGINS;

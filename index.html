@@ -137,6 +137,47 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .header{padding:20px 0 18px}
   .auth-title{font-size:22px}
 }
+
+/* ── Tools (suggest / proofread / refine / narrate) ── */
+.tool-section{margin-top:8px;border-top:1px solid var(--border);padding-top:24px}
+.tool-card{border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:12px}
+.tool-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:2px}
+.tool-title{font-size:11px;font-family:var(--font-mono);letter-spacing:0.05em;text-transform:uppercase;color:var(--gray-400)}
+.tool-body{margin-top:14px}
+.tool-error{font-size:12px;color:#a33;margin-top:10px;line-height:1.5;word-break:break-word}
+.btn-sm{font-size:12px;padding:7px 13px;border-radius:var(--radius);border:1px solid var(--border-strong);background:var(--white);color:var(--black);font-family:var(--font-body);cursor:pointer;transition:background 0.15s,border-color 0.15s;white-space:nowrap}
+.btn-sm:hover:not(:disabled){background:var(--gray-50);border-color:var(--black)}
+.btn-sm:disabled{opacity:0.45;cursor:default}
+.btn-sm.solid{background:var(--black);color:var(--white);border-color:var(--black)}
+.btn-sm.solid:hover:not(:disabled){opacity:0.85;background:var(--black)}
+.spin{display:inline-block;width:11px;height:11px;border:1.5px solid var(--gray-100);border-top-color:var(--black);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* suggestions */
+.sug-group{margin-bottom:16px}
+.sug-label{font-size:11px;font-family:var(--font-mono);color:var(--gray-400);margin-bottom:7px;letter-spacing:0.04em}
+.sug-item{border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;margin-bottom:6px;font-size:13px;line-height:1.5;cursor:pointer;transition:border-color 0.15s,background 0.15s}
+.sug-item:hover{border-color:var(--black);background:var(--gray-50)}
+.sug-item.used{border-color:var(--black);background:var(--gray-50)}
+
+/* proofread */
+.pf-score-row{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.pf-score{font-size:30px;font-weight:300;font-family:var(--font-mono);letter-spacing:-0.02em}
+.pf-score-max{font-size:12px;color:var(--gray-400);font-family:var(--font-mono)}
+.pf-overall{font-size:13px;line-height:1.6;color:var(--gray-600);margin-bottom:14px}
+.pf-list{list-style:none;margin:0 0 14px;padding:0}
+.pf-list li{font-size:13px;line-height:1.6;padding-left:16px;position:relative;margin-bottom:5px}
+.pf-list li:before{content:'·';position:absolute;left:4px;color:var(--gray-400)}
+.pf-sug{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:7px}
+.pf-type{display:inline-block;font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-400);border:1px solid var(--border);border-radius:3px;padding:1px 5px;margin-bottom:6px}
+.pf-from{font-size:12px;color:var(--gray-400);text-decoration:line-through;line-height:1.5}
+.pf-to{font-size:13px;line-height:1.5;margin-top:3px}
+.pf-why{font-size:11px;color:var(--gray-400);margin-top:5px;font-family:var(--font-mono)}
+
+/* narrate */
+.tts-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tts-row select{flex:1;min-width:150px}
+.tts-audio{width:100%;margin-top:14px;height:36px}
 </style>
 </head>
 <body>
@@ -166,7 +207,12 @@ const state = {
   currentLang: 'EN',
   saveStatus: '',
   pastSpeeches: [],
-  dashTab: 'new'
+  dashTab: 'new',
+  // tools
+  suggestions: null, suggestBusy: false, suggestErr: '', usedTitle: -1, usedIntro: -1,
+  proofread: null, proofBusy: false, proofErr: '',
+  refineBusy: false, refineErr: '',
+  voices: null, voiceId: '', ttsBusy: false, ttsErr: '', audioUrl: null
 };
 
 const STEP_NAMES = ['Pre-Speech','Metadata','Introduction','Evaluator','Checklist','Languages'];
@@ -344,6 +390,14 @@ function getStepContent() {
         <div class="field-group"><label>Club Name</label><input id="f_club" type="text" placeholder="CEO Toastmasters" value="${d.club||'CEO Toastmasters'}"></div>
       </div>
       <div class="section-title">Speech Titles</div>
+      <div class="tool-card">
+        <div class="tool-head">
+          <div class="tool-title">Stuck? Let the coach suggest</div>
+          <button class="btn-sm" id="btnSuggest" onclick="runSuggest()">Suggest titles &amp; openings</button>
+        </div>
+        <div class="field-hint">Uses the brief so far — fill in Pathway, Project and the premise first for better results.</div>
+        <div id="suggestPanel"></div>
+      </div>
       <div class="field-group"><label>English Title</label><input id="f_titleEN" type="text" placeholder="e.g. The Impossible Mission" value="${d.titleEN||''}"></div>
       <div class="field-row">
         <div><label>French Title</label><input id="f_titleFR" type="text" placeholder="e.g. La Mission Impossible" value="${d.titleFR||''}"></div>
@@ -360,6 +414,15 @@ function getStepContent() {
       </div>
       <div class="field-group"><label>Context / Setup for Evaluator</label>
         <textarea id="f_context" placeholder="Brief description of what the speech is about (not shown to audience — for evaluator only)">${d.context||''}</textarea>
+      </div>
+      <div class="section-title">Premise &amp; Message</div>
+      <div class="field-group"><label>Premise</label>
+        <textarea id="f_premise" placeholder="The story or situation the speech is built on. e.g. An 18-year-old rookie shot four air balls in an elimination game — then drove to a high-school gym at midnight and kept shooting.">${d.premise||''}</textarea>
+        <div class="field-hint">The raw material — what actually happens in the speech</div>
+      </div>
+      <div class="field-group"><label>Message — the connection you want to land</label>
+        <textarea id="f_centralMessage" placeholder="What the audience should walk out holding. e.g. Everyone in this room has bombed at this lectern. The club is the gym you go back to.">${d.centralMessage||''}</textarea>
+        <div class="field-hint">Ties the premise to your audience — the close is built from this</div>
       </div>
       ${btnRow(true, true)}`;
 
@@ -410,10 +473,12 @@ function btnRow(showBack, showNext) {
   </div>`;
 }
 
-function attachStepListeners() {}
+function attachStepListeners() {
+  if (state.step === 2) renderSuggest();
+}
 
 function collectFormData() {
-  const fields = ['duration','humorTone','wordEN','wordFR','wordES','pathway','level','project','club','titleEN','titleFR','titleES','hook','context','evaluatorName','evaluatorClub','deliveryDate'];
+  const fields = ['duration','humorTone','wordEN','wordFR','wordES','pathway','level','project','club','titleEN','titleFR','titleES','hook','context','premise','centralMessage','evaluatorName','evaluatorClub','deliveryDate'];
   fields.forEach(id => {
     const el = document.getElementById('f_'+id);
     if (el) state.formData[id] = el.value;
@@ -465,7 +530,8 @@ async function generateSpeech() {
                 (state.selectedLangs[0] === 'FR' ? 'French' : 'Spanish'),
       key_points: [d.hook, d.context].filter(Boolean).join('. '),
       audience: d.club || 'Toastmasters club',
-      central_message: d.context || '',
+      story_line: d.premise || '',
+      central_message: d.centralMessage || d.context || '',
     };
     const res = await apiFetch('/api/generate', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -514,7 +580,254 @@ function renderOutput() {
     <div style="padding:0 0 24px">
       ${state.currentTab !== 'email' ? `<div class="lang-sub-tabs">${langTabs}</div>` : ''}
       ${content}
+      ${state.currentTab !== 'email' ? `<div class="tool-section">
+        <div class="tool-card"><div class="tool-head">
+          <div class="tool-title">Narrate</div>
+          <button class="btn-sm" onclick="loadVoices()" id="btnVoices">Load voices</button>
+        </div><div id="panelTts"></div></div>
+        <div class="tool-card"><div class="tool-head">
+          <div class="tool-title">Proofread</div>
+          <button class="btn-sm" onclick="runProofread()" id="btnProof">Score &amp; suggest edits</button>
+        </div><div id="panelProof"></div></div>
+        <div class="tool-card"><div class="tool-head">
+          <div class="tool-title">Refine</div>
+        </div><div id="panelRefine"></div></div>
+      </div>` : ''}
     </div>`;
+
+  if (state.currentTab !== 'email') { renderTts(); renderProof(); renderRefine(); }
+}
+
+// ── Tools ─────────────────────────────────────────────────────
+// Each panel re-renders itself rather than going through renderOutput(), so a
+// finishing proofread does not tear down audio that is mid-playback.
+
+function currentSpeech() {
+  const l = state.speeches?.[state.currentLang];
+  return l ? (state.currentTab === 'directed' ? l.directed : l.teleprompter) : '';
+}
+
+function setSpeech(text) {
+  const l = state.speeches?.[state.currentLang];
+  if (!l) return;
+  l.directed = text; l.teleprompter = text;
+  const el = document.getElementById('speechTextEl');
+  if (el) el.textContent = text;
+}
+
+function busy(label) { return `<span class="spin"></span>${label}`; }
+
+// ── Suggest ──
+async function runSuggest() {
+  collectFormData();
+  state.suggestBusy = true; state.suggestErr = '';
+  renderSuggest();
+  const d = state.formData;
+  try {
+    const res = await apiFetch('/api/suggest', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: d.titleEN || '', pathway: d.pathway || '',
+        project: `${d.project || ''}${d.level ? ` Level ${d.level}` : ''}`.trim(),
+        tone: d.humorTone || '', story_line: d.premise || '',
+        central_message: d.centralMessage || d.context || '',
+        duration: `${d.duration || 5} minutes`, language: langName(state.selectedLangs[0]),
+      }),
+    });
+    const r = await res.json();
+    if (!res.ok || r.error) throw new Error(r.error || 'Request failed');
+    state.suggestions = r;
+  } catch (e) { state.suggestErr = e.message; }
+  state.suggestBusy = false;
+  renderSuggest();
+}
+
+function renderSuggest() {
+  const el = document.getElementById('suggestPanel');
+  const btn = document.getElementById('btnSuggest');
+  if (btn) { btn.disabled = state.suggestBusy; btn.innerHTML = state.suggestBusy ? busy('Thinking') : 'Suggest titles &amp; openings'; }
+  if (!el) return;
+  if (state.suggestErr) { el.innerHTML = `<div class="tool-error">${escHtml(state.suggestErr)}</div>`; return; }
+  const s = state.suggestions;
+  if (!s) { el.innerHTML = ''; return; }
+  const titles = (s.titles || []).map((t, i) =>
+    `<div class="sug-item ${state.usedTitle === i ? 'used' : ''}" onclick="useTitle(${i})">${escHtml(t)}</div>`).join('');
+  const intros = (s.intros || []).map((t, i) =>
+    `<div class="sug-item ${state.usedIntro === i ? 'used' : ''}" onclick="useIntro(${i})">${escHtml(t)}</div>`).join('');
+  el.innerHTML = `<div class="tool-body">
+    ${titles ? `<div class="sug-group"><div class="sug-label">Titles — click to use</div>${titles}</div>` : ''}
+    ${intros ? `<div class="sug-group"><div class="sug-label">Openings — click to use as your hook</div>${intros}</div>` : ''}
+  </div>`;
+}
+
+function useTitle(i) {
+  const t = state.suggestions?.titles?.[i]; if (t == null) return;
+  state.formData.titleEN = t; state.usedTitle = i;
+  const el = document.getElementById('f_titleEN'); if (el) el.value = t;
+  renderSuggest();
+}
+
+function useIntro(i) {
+  const t = state.suggestions?.intros?.[i]; if (t == null) return;
+  // The hook lives on step 3; stash it so that step picks it up when shown.
+  state.formData.hook = t; state.usedIntro = i;
+  const el = document.getElementById('f_hook'); if (el) el.value = t;
+  renderSuggest();
+}
+
+function langName(code) {
+  return code === 'FR' ? 'French' : code === 'ES' ? 'Spanish' : 'English';
+}
+
+// ── Proofread ──
+async function runProofread() {
+  const speech = currentSpeech();
+  if (!speech) return;
+  state.proofBusy = true; state.proofErr = ''; renderProof();
+  try {
+    const res = await apiFetch('/api/proofread', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ speech }),
+    });
+    const r = await res.json();
+    if (!res.ok || r.error) throw new Error(r.error || 'Request failed');
+    state.proofread = r;
+  } catch (e) { state.proofErr = e.message; }
+  state.proofBusy = false; renderProof();
+}
+
+function renderProof() {
+  const el = document.getElementById('panelProof');
+  const btn = document.getElementById('btnProof');
+  if (btn) { btn.disabled = state.proofBusy; btn.innerHTML = state.proofBusy ? busy('Reading') : 'Score &amp; suggest edits'; }
+  if (!el) return;
+  if (state.proofErr) { el.innerHTML = `<div class="tool-error">${escHtml(state.proofErr)}</div>`; return; }
+  const p = state.proofread;
+  if (!p) { el.innerHTML = ''; return; }
+  const strengths = (p.strengths || []).map(x => `<li>${escHtml(x)}</li>`).join('');
+  const sugs = (p.suggestions || []).map(x => `<div class="pf-sug">
+      <span class="pf-type">${escHtml(x.type || 'edit')}</span>
+      <div class="pf-from">${escHtml(x.original || '')}</div>
+      <div class="pf-to">${escHtml(x.suggestion || '')}</div>
+      ${x.reason ? `<div class="pf-why">${escHtml(x.reason)}</div>` : ''}
+    </div>`).join('');
+  el.innerHTML = `<div class="tool-body">
+    <div class="pf-score-row"><span class="pf-score">${escHtml(String(p.score ?? '—'))}</span><span class="pf-score-max">/ 100 stage-ready</span></div>
+    ${p.overall ? `<div class="pf-overall">${escHtml(p.overall)}</div>` : ''}
+    ${strengths ? `<div class="sug-label">Strengths</div><ul class="pf-list">${strengths}</ul>` : ''}
+    ${sugs ? `<div class="sug-label">Suggested edits</div>${sugs}` : ''}
+    ${p.revised ? `<button class="btn-sm solid" onclick="applyRevision()">Apply all edits to the speech</button>` : ''}
+  </div>`;
+}
+
+function applyRevision() {
+  const r = state.proofread?.revised;
+  if (!r) return;
+  setSpeech(r);
+  state.proofread = null;
+  state.saveStatus = '';
+  renderProof();
+}
+
+// ── Refine ──
+function renderRefine() {
+  const el = document.getElementById('panelRefine');
+  if (!el) return;
+  el.innerHTML = `<div class="tool-body">
+    <textarea id="refineInstr" placeholder="What should change? e.g. Make the close land harder and cut 30 seconds. Or: rewrite the hook so it does not give away the ending."></textarea>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+      <button class="btn-sm solid" id="btnRefine" onclick="runRefine()" ${state.refineBusy ? 'disabled' : ''}>${state.refineBusy ? busy('Rewriting') : 'Refine speech'}</button>
+    </div>
+    ${state.refineErr ? `<div class="tool-error">${escHtml(state.refineErr)}</div>` : ''}
+  </div>`;
+}
+
+async function runRefine() {
+  const instrEl = document.getElementById('refineInstr');
+  const instruction = (instrEl?.value || '').trim();
+  const speech = currentSpeech();
+  if (!instruction) { state.refineErr = 'Say what you want changed first.'; renderRefine(); return; }
+  if (!speech) return;
+  state.refineBusy = true; state.refineErr = '';
+  // Preserve what was typed: renderRefine rebuilds the textarea.
+  const keep = instruction;
+  renderRefine();
+  document.getElementById('refineInstr').value = keep;
+  try {
+    const res = await apiFetch('/api/refine', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ speech, instruction }),
+    });
+    const r = await res.json();
+    if (!res.ok || r.error) throw new Error(r.error || 'Request failed');
+    setSpeech(r.speech);
+    state.proofread = null;   // scores and edits refer to the old text now
+    state.saveStatus = '';
+    state.refineBusy = false;
+    renderRefine(); renderProof();
+    return;
+  } catch (e) { state.refineErr = e.message; }
+  state.refineBusy = false;
+  renderRefine();
+  document.getElementById('refineInstr').value = keep;
+}
+
+// ── Narrate ──
+async function loadVoices() {
+  state.ttsErr = ''; renderTts();
+  const btn = document.getElementById('btnVoices');
+  if (btn) { btn.disabled = true; btn.innerHTML = busy('Loading'); }
+  try {
+    const res = await apiFetch('/api/tts/voices');
+    const r = await res.json();
+    if (!res.ok || r.error) throw new Error(r.error || 'Request failed');
+    state.voices = r;
+    if (r.length && !state.voiceId) state.voiceId = r[0].id;
+  } catch (e) { state.ttsErr = e.message; }
+  if (btn) { btn.disabled = false; btn.textContent = 'Reload voices'; }
+  renderTts();
+}
+
+function setVoice(id) { state.voiceId = id; }
+
+function renderTts() {
+  const el = document.getElementById('panelTts');
+  if (!el) return;
+  const opts = (state.voices || []).map(v =>
+    `<option value="${escHtml(v.id)}" ${state.voiceId === v.id ? 'selected' : ''}>${escHtml(v.name)}</option>`).join('');
+  el.innerHTML = `<div class="tool-body">
+    ${state.voices
+      ? (state.voices.length
+          ? `<div class="tts-row">
+               <select onchange="setVoice(this.value)">${opts}</select>
+               <button class="btn-sm solid" id="btnTts" onclick="runTts()" ${state.ttsBusy ? 'disabled' : ''}>${state.ttsBusy ? busy('Narrating') : 'Narrate'}</button>
+             </div>`
+          : `<div class="field-hint">No voices on this ElevenLabs account.</div>`)
+      : `<div class="field-hint">Load your ElevenLabs voices to narrate this speech.</div>`}
+    ${state.audioUrl ? `<audio class="tts-audio" controls src="${state.audioUrl}"></audio>` : ''}
+    ${state.ttsErr ? `<div class="tool-error">${escHtml(state.ttsErr)}</div>` : ''}
+  </div>`;
+}
+
+async function runTts() {
+  const text = currentSpeech();
+  if (!text) return;
+  state.ttsBusy = true; state.ttsErr = ''; renderTts();
+  try {
+    const res = await apiFetch('/api/tts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voice_id: state.voiceId }),
+    });
+    if (!res.ok) {
+      const r = await res.json().catch(() => ({}));
+      throw new Error(r.error || `Narration failed (${res.status})`);
+    }
+    // Hold the audio as a blob so the player can seek and replay without
+    // re-billing a second synthesis.
+    if (state.audioUrl) URL.revokeObjectURL(state.audioUrl);
+    state.audioUrl = URL.createObjectURL(await res.blob());
+  } catch (e) { state.ttsErr = e.message; }
+  state.ttsBusy = false; renderTts();
 }
 
 function getTabContent() {
@@ -583,6 +896,9 @@ async function saveSpeech() {
 function startNew() {
   state.speeches = null; state.step = 1; state.formData = {}; state.checklist = new Array(8).fill(false);
   state.selectedLangs = ['EN']; state.saveStatus = ''; state.dashTab = 'new';
+  state.suggestions = null; state.suggestErr = ''; state.usedTitle = -1; state.usedIntro = -1;
+  state.proofread = null; state.proofErr = ''; state.refineErr = ''; state.ttsErr = '';
+  if (state.audioUrl) { URL.revokeObjectURL(state.audioUrl); state.audioUrl = null; }
   render();
 }
 </script>

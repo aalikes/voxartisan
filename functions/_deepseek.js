@@ -1,5 +1,7 @@
 // Shared DeepSeek client for the API routes.
 
+import { redact } from './_shared.js';
+
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 
 // The deepseek-chat / deepseek-reasoner aliases retired 2026-07-24; the V4
@@ -75,7 +77,10 @@ export async function deepseekChat(env, prompt, { jsonMode = false, maxTokens = 
   }
 
   if (!resp.ok) {
-    const errText = await resp.text();
+    // Never relay an upstream body unscrubbed: providers quote the offending
+    // credential back at you (Google's 403 for a suspended key does exactly
+    // that), which would hand our key to anyone who can trigger the error.
+    const errText = redact(await resp.text(), apiKey);
     throw new DeepSeekError(`DeepSeek API error ${resp.status}: ${errText.slice(0, 300)}`);
   }
 

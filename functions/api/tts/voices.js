@@ -1,5 +1,5 @@
 // GET /api/tts/voices — the ElevenLabs voices available to this account
-import { json, error, handleOptions } from '../../_shared.js';
+import { json, error, handleOptions, redact } from '../../_shared.js';
 
 const VOICES_URL = 'https://api.elevenlabs.io/v1/voices';
 
@@ -19,7 +19,7 @@ export async function onRequestGet(context) {
     const resp = await fetch(VOICES_URL, { headers: { 'xi-api-key': apiKey } });
 
     if (!resp.ok) {
-      const errText = await resp.text();
+      const errText = redact(await resp.text(), apiKey);
       return error(`ElevenLabs ${resp.status}: ${errText.slice(0, 300)}`, 502);
     }
 
