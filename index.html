@@ -355,11 +355,13 @@ function getStepContent() {
         </div>
       </div>
       <div class="section-title">Word of the Day</div>
+      <div class="field-hint" style="margin-bottom:10px">Woven into the speech naturally — never announced.</div>
       <div class="field-row-3">
         <div><label>English</label><input id="f_wordEN" type="text" placeholder="e.g. Steady" value="${d.wordEN||''}"></div>
         <div><label>French</label><input id="f_wordFR" type="text" placeholder="e.g. Régulier" value="${d.wordFR||''}"></div>
         <div><label>Spanish</label><input id="f_wordES" type="text" placeholder="e.g. Constante" value="${d.wordES||''}"></div>
       </div>
+      <div class="field-group" style="margin-top:12px"><label>Kreyòl</label><input id="f_wordHT" type="text" placeholder="e.g. Kenbe" value="${d.wordHT||''}"></div>
       ${btnRow(false, true)}`;
 
     case 2: return `
@@ -370,7 +372,10 @@ function getStepContent() {
           <div><label>Level</label><select id="f_level">${[1,2,3,4,5].map(n=>`<option ${d.level==n?'selected':''}>${n}</option>`).join('')}</select></div>
         </div>
         <div class="field-group"><label>Project Name</label><input id="f_project" type="text" placeholder="e.g. Ice Breaker" value="${d.project||''}"></div>
-        <div class="field-group"><label>Club Name</label><input id="f_club" type="text" placeholder="CEO Toastmasters" value="${d.club||'CEO Toastmasters'}"></div>
+        <div class="field-row">
+          <div><label>Your Name</label><input id="f_speaker" type="text" placeholder="How the introducer should announce you" value="${d.speaker||''}"></div>
+          <div><label>Club Name</label><input id="f_club" type="text" placeholder="CEO Toastmasters" value="${d.club||'CEO Toastmasters'}"></div>
+        </div>
       </div>
       <div class="section-title">Speech Titles</div>
       <div class="tool-card">
@@ -382,9 +387,10 @@ function getStepContent() {
         <div id="suggestPanel"></div>
       </div>
       <div class="field-group"><label>English Title</label><input id="f_titleEN" type="text" placeholder="e.g. The Impossible Mission" value="${d.titleEN||''}"></div>
-      <div class="field-row">
+      <div class="field-row-3">
         <div><label>French Title</label><input id="f_titleFR" type="text" placeholder="e.g. La Mission Impossible" value="${d.titleFR||''}"></div>
         <div><label>Spanish Title</label><input id="f_titleES" type="text" placeholder="e.g. La Misión Imposible" value="${d.titleES||''}"></div>
+        <div><label>Kreyòl Title</label><input id="f_titleHT" type="text" placeholder="e.g. Misyon Enposib la" value="${d.titleHT||''}"></div>
       </div>
       ${btnRow(true, true)}`;
 
@@ -439,6 +445,7 @@ function getStepContent() {
           <div class="lang-toggle ${state.selectedLangs.includes('EN')?'selected':''}" onclick="toggleLang('EN')">EN · English</div>
           <div class="lang-toggle ${state.selectedLangs.includes('FR')?'selected':''}" onclick="toggleLang('FR')">FR · Français</div>
           <div class="lang-toggle ${state.selectedLangs.includes('ES')?'selected':''}" onclick="toggleLang('ES')">ES · Español</div>
+          <div class="lang-toggle ${state.selectedLangs.includes('HT')?'selected':''}" onclick="toggleLang('HT')">HT · Kreyòl</div>
         </div>
         <div class="field-hint" style="margin-top:10px">${state.selectedLangs.length} language${state.selectedLangs.length!==1?'s':''} selected</div>
       </div>
@@ -461,7 +468,7 @@ function attachStepListeners() {
 }
 
 function collectFormData() {
-  const fields = ['duration','humorTone','wordEN','wordFR','wordES','pathway','level','project','club','titleEN','titleFR','titleES','hook','context','premise','centralMessage','evaluatorName','evaluatorClub','deliveryDate'];
+  const fields = ['duration','humorTone','wordEN','wordFR','wordES','wordHT','pathway','level','project','club','speaker','titleEN','titleFR','titleES','titleHT','hook','context','premise','centralMessage','evaluatorName','evaluatorClub','deliveryDate'];
   fields.forEach(id => {
     const el = document.getElementById('f_'+id);
     if (el) state.formData[id] = el.value;
@@ -492,46 +499,141 @@ function toggleLang(lang) {
 // ── Generate ─────────────────────────────────────────────────
 async function generateSpeech() {
   collectFormData();
+  const langs = state.selectedLangs.slice();
   const panel = document.getElementById('panelNew');
   panel.innerHTML = `<div class="generating">
     <div class="gen-spinner"></div>
-    <div class="gen-label">Writing your speech...<br><span style="font-size:11px;color:var(--gray-400)">This may take 20–40 seconds for multiple languages</span></div>
+    <div class="gen-label">Writing ${langs.length} ${langs.length === 1 ? 'version' : 'versions'}...<br><span style="font-size:11px;color:var(--gray-400)">${langs.map(langName).join(' · ')} — 20\u201340 seconds each, running together</span></div>
   </div>`;
 
-  try {
-    // Build payload for the Worker API
-    const d = state.formData;
-    const payload = {
-      topic: d.titleEN || d.topic || '',
-      pathway: d.pathway || '',
-      project: `${d.project || ''}${d.level ? ` Level ${d.level}` : ''}`.trim(),
-      duration: `${d.duration || 5} minutes`,
-      tone: d.humorTone || 'professional',
-      intro_style: 'Bold Statement',
-      closing_technique: 'Callback to Opening',
-      language: (state.selectedLangs[0] || 'EN') === 'EN' ? 'English' :
-                (state.selectedLangs[0] === 'FR' ? 'French' : 'Spanish'),
-      key_points: [d.hook, d.context].filter(Boolean).join('. '),
-      audience: d.club || 'Toastmasters club',
-      story_line: d.premise || '',
-      central_message: d.centralMessage || d.context || '',
-    };
-    const res = await apiFetch('/api/generate', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    const result = await res.json();
-    if (!res.ok || result.error) throw new Error(result.error || 'Generation failed');
-    // Worker returns { speech: "text" } — wrap for SPA compatibility
-    state.speeches = { EN: { directed: result.speech, teleprompter: result.speech } };
-    state.currentTab = 'directed';
-    state.currentLang = state.selectedLangs[0];
-    state.saveStatus = '';
-    render();
-  } catch(e) {
-    panel.innerHTML = `<div class="notice notice-error" style="margin-top:24px">Generation failed: ${e.message}</div>
+  // One request per language, in parallel. Previously only the first selected
+  // language was ever generated, which made the picker and the output tabs
+  // decorative.
+  const results = await Promise.all(langs.map(code =>
+    apiFetch('/api/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildPayload(code)),
+    })
+      .then(async res => {
+        const r = await res.json();
+        if (!res.ok || r.error) throw new Error(r.error || 'Generation failed');
+        return { code, speech: r.speech };
+      })
+      .catch(e => ({ code, error: e.message }))
+  ));
+
+  const ok = results.filter(r => !r.error);
+  const failed = results.filter(r => r.error);
+
+  if (!ok.length) {
+    panel.innerHTML = `<div class="notice notice-error" style="margin-top:24px">Generation failed: ${escHtml(failed[0].error)}</div>
       <div class="btn-row"><button class="btn btn-ghost" onclick="state.step=6;render()">← Back</button></div>`;
+    return;
   }
+
+  state.speeches = {};
+  ok.forEach(({ code, speech }) => {
+    state.speeches[code] = { directed: speech, teleprompter: toTeleprompter(speech) };
+  });
+  // A language that failed keeps its tab, so the failure is visible rather
+  // than the tab silently vanishing.
+  failed.forEach(({ code, error }) => { state.speeches[code] = { error }; });
+
+  state.currentTab = 'directed';
+  state.currentLang = ok[0].code;
+  state.saveStatus = '';
+  state.genFailures = failed;
+  render();
+}
+
+// Build the per-language payload. Title and Word of the Day are picked for the
+// language being written, falling back to the English ones.
+function buildPayload(code) {
+  const d = state.formData;
+  return {
+    topic: d['title' + code] || d.titleEN || d.topic || '',
+    pathway: d.pathway || '',
+    project: `${d.project || ''}${d.level ? ` Level ${d.level}` : ''}`.trim(),
+    duration: `${d.duration || 5} minutes`,
+    tone: d.humorTone || 'professional',
+    intro_style: 'Bold Statement',
+    closing_technique: 'Callback to Opening',
+    language: langName(code),
+    key_points: [d.hook, d.context].filter(Boolean).join('. '),
+    audience: d.club || 'Toastmasters club',
+    story_line: d.premise || '',
+    central_message: d.centralMessage || d.context || '',
+    speaker: d.speaker || '',
+    word_of_day: d['word' + code] || d.wordEN || '',
+    evaluator: {
+      name: d.evaluatorName || '',
+      club: d.evaluatorClub || '',
+      date: d.deliveryDate || '',
+    },
+    checklist: CHECKLIST_ITEMS.filter((_, i) => state.checklist[i]),
+  };
+}
+
+// ── Teleprompter ──────────────────────────────────────────────
+// A delivery view, not a copy of the script: stage directions and section
+// headers are removed, and sentences are broken onto their own short lines so
+// the eye can catch them while looking up at a room.
+function toTeleprompter(text) {
+  const spoken = text
+    .split('\n')
+    .filter(line => !/^\s*##/.test(line))       // section headers
+    .join('\n')
+    .replace(/\[[^\]]*\]/g, '')                 // [stage directions]
+    .replace(/[ \t]+/g, ' ');
+
+  return spoken
+    .split(/\n{2,}/)
+    .map(para => para.trim())
+    .filter(Boolean)
+    .map(para => para
+      .replace(/([.!?])\s+/g, '$1\n')            // one sentence per line
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .join('\n'))
+    .join('\n\n');
+}
+
+// ── Evaluator email ───────────────────────────────────────────
+// Composed from what we already know rather than spending a generation call.
+function buildEmail() {
+  const d = state.formData;
+  const s = state.speeches?.[state.currentLang];
+  if (!s || s.error) return '';
+
+  // The generated Introducer's Introduction is exactly what an evaluator needs.
+  const card = (s.directed.split(/^##\s*/m).find(sec => /^INTRODUCER/i.test(sec)) || '')
+    .replace(/^INTRODUCER'?S INTRODUCTION\s*/i, '').trim();
+
+  const title = (s.directed.split(/^##\s*/m).find(sec => /^TITLE/i.test(sec)) || '')
+    .replace(/^TITLE\s*/i, '').trim().split('\n')[0] || d.titleEN || 'my speech';
+
+  const ticked = CHECKLIST_ITEMS.filter((_, i) => state.checklist[i]);
+
+  return [
+    `Subject: ${d.pathway || 'Toastmasters'} speech — "${title}"${d.deliveryDate ? ` (${d.deliveryDate})` : ''}`,
+    ``,
+    `Hi ${d.evaluatorName || 'there'},`,
+    ``,
+    `Thank you for evaluating me${d.deliveryDate ? ` on ${d.deliveryDate}` : ''}. Details below so you can prepare.`,
+    ``,
+    `Pathway: ${d.pathway || '—'}`,
+    `Level / Project: ${d.level ? `Level ${d.level} — ` : ''}${d.project || '—'}`,
+    `Title: ${title}`,
+    `Time: ${d.duration || 5} minutes`,
+    `Language: ${langName(state.currentLang)}`,
+    ``,
+    ...(d.centralMessage ? [`What I am trying to land:`, d.centralMessage, ``] : []),
+    ...(ticked.length ? [`What I would especially like you to watch for:`, ...ticked.map(c => `  • ${c}`), ``] : []),
+    ...(card ? [`Introduction to read before I speak:`, ``, card, ``] : []),
+    `Thanks again,`,
+    d.speaker || '',
+  ].join('\n');
 }
 
 // ── Output ────────────────────────────────────────────────────
@@ -593,9 +695,12 @@ function currentSpeech() {
 function setSpeech(text) {
   const l = state.speeches?.[state.currentLang];
   if (!l) return;
-  l.directed = text; l.teleprompter = text;
+  // Re-derive the teleprompter rather than mirroring the script — a refine or
+  // an applied revision changes the words, so the delivery view must follow.
+  l.directed = text;
+  l.teleprompter = toTeleprompter(text);
   const el = document.getElementById('speechTextEl');
-  if (el) el.textContent = text;
+  if (el) el.textContent = state.currentTab === 'teleprompter' ? l.teleprompter : text;
 }
 
 function busy(label) { return `<span class="spin"></span>${label}`; }
@@ -658,9 +763,8 @@ function useIntro(i) {
   renderSuggest();
 }
 
-function langName(code) {
-  return code === 'FR' ? 'French' : code === 'ES' ? 'Spanish' : 'English';
-}
+const LANGS = { EN: 'English', FR: 'French', ES: 'Spanish', HT: 'Haitian Creole' };
+function langName(code) { return LANGS[code] || 'English'; }
 
 // ── Proofread ──
 async function runProofread() {
@@ -816,12 +920,19 @@ async function runTts() {
 function getTabContent() {
   const s = state.speeches;
   if (!s) return '';
+
   if (state.currentTab === 'email') {
-    return `<div class="email-text">${escHtml(s.email||'No email generated.')}</div>
-      <div class="copy-row"><button class="btn-copy" onclick="copyText('email-text')">Copy Email</button></div>`;
+    const body = buildEmail();
+    return `<div class="email-text" id="emailText">${escHtml(body || 'Generate a speech first.')}</div>
+      <div class="copy-row"><button class="btn-copy" onclick="copyText('emailText')">Copy Email</button></div>`;
   }
+
   const langData = s[state.currentLang];
   if (!langData) return `<div class="notice notice-info">No content for ${state.currentLang}</div>`;
+  if (langData.error) {
+    return `<div class="notice notice-error">${langName(state.currentLang)} failed: ${escHtml(langData.error)}</div>`;
+  }
+
   const text = state.currentTab === 'directed' ? langData.directed : langData.teleprompter;
   const cls = state.currentTab === 'teleprompter' ? 'speech-text teleprompter' : 'speech-text';
   const label = state.currentTab === 'directed' ? 'Copy Directed' : 'Copy Teleprompter';
@@ -850,17 +961,20 @@ async function saveSpeech() {
   state.saveStatus = 'saving';
   renderOutput();
   const d = state.formData;
-  const speechText = state.speeches?.EN?.directed || '';
+  // Save the language being viewed, not always English — a Kreyòl-only
+  // generation used to save an empty speech.
+  const lang = state.currentLang;
+  const speechText = state.speeches?.[lang]?.directed || '';
   try {
     const res = await apiFetch('/api/speeches', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        title: d.titleEN || 'Untitled Speech',
+        title: d['title' + lang] || d.titleEN || 'Untitled Speech',
         pathway: d.pathway || '',
         project: `${d.project || ''}${d.level ? ` Level ${d.level}` : ''}`.trim(),
         duration: `${d.duration || 5} minutes`,
         topic: d.titleEN || '',
-        language: state.selectedLangs[0] || 'EN',
+        language: lang || 'EN',
         text: speechText,
         form_data: state.formData,
         all_langs: state.speeches,

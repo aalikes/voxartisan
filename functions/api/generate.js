@@ -39,6 +39,20 @@ function buildGeneratePrompt(data) {
   const excluded_sections   = data.excluded_sections || [];
   const custom_additions    = data.custom_additions || '';
 
+  // The speaker's own name. Previously hard-coded, which made every speech
+  // this tool produced belong to one person.
+  const speaker             = (data.speaker || '').trim() || 'the speaker';
+
+  // Toastmasters clubs give a Word of the Day that speakers are expected to
+  // work in naturally rather than announce.
+  const word_of_day         = (data.word_of_day || '').trim();
+
+  // Who is evaluating, and when — read out from the introducer's card.
+  const evaluator           = data.evaluator || {};
+
+  // Quality constraints the speaker ticked before generating.
+  const checklist           = Array.isArray(data.checklist) ? data.checklist : [];
+
   const clean_pathway       = pathway && pathway !== "— Select a Pathway —" ? pathway : "";
   const pathway_line        = clean_pathway ? `- Toastmasters Pathway: ${clean_pathway}` : "";
   const project_line        = project ? `- Project: ${project}` : "";
@@ -53,6 +67,18 @@ function buildGeneratePrompt(data) {
   const objectives_text     = project_objectives ? `\nProject Objectives to satisfy:\n${project_objectives}` : "";
   const key_points_line     = key_points ? `- Key Points: ${key_points}` : "";
   const persona_note        = personaInstruction(persona);
+
+  const word_note           = word_of_day
+    ? `\n\n📖 WORD OF THE DAY: "${word_of_day}". Work it into the speech naturally — in a sentence where it genuinely belongs. Do NOT announce it, define it, or draw attention to it.`
+    : "";
+
+  const evaluator_line      = evaluator.name
+    ? `\n- Evaluator: ${evaluator.name}${evaluator.club ? ` (${evaluator.club})` : ''}${evaluator.date ? `, delivering ${evaluator.date}` : ''}`
+    : "";
+
+  const checklist_note      = checklist.length
+    ? `\n\n✅ THE SPEAKER HAS COMMITTED TO THESE. Treat each as a hard requirement, not a preference:\n${checklist.map(c => `- ${c}`).join('\n')}`
+    : "";
   const language_note       = languageInstructions(language);
   const excluded_note       = excluded_sections.length ? `\n⛔ SKIP THESE SECTIONS ENTIRELY — do not generate them: ${excluded_sections.join(', ')}` : "";
   const custom_note         = custom_additions ? `\n🔧 ADDITIONAL INSTRUCTIONS FOR THIS ITERATION:\n${custom_additions}` : "";
@@ -77,8 +103,11 @@ ${central_msg_line}
 ${closing_line}
 ${key_points_line}
 - Language: ${language}
+- Speaker: ${speaker}${evaluator_line}
 ${story_line_text}
 ${objectives_text}
+${word_note}
+${checklist_note}
 ${language_note}
 ${excluded_note}
 ${custom_note}
@@ -96,7 +125,7 @@ MANDATORY SPEECH STRUCTURE — deliver the sections in this exact order:
 A punchy, memorable title for the speech. Generate this FIRST.
 
 ## INTRODUCER'S INTRODUCTION
-A card written for the Toastmaster or evaluator who will introduce Shah to the room. MANDATORY — you MUST include ALL FIVE of the following lines verbatim at the top of this section, filled in with the actual values:
+A card written for the Toastmaster or evaluator who will introduce ${speaker} to the room. MANDATORY — you MUST include ALL FIVE of the following lines verbatim at the top of this section, filled in with the actual values:
 
   Pathway: ${clean_pathway || "[Not specified]"}
   Level: ${level_str || "[Not specified]"}
@@ -104,13 +133,13 @@ A card written for the Toastmaster or evaluator who will introduce Shah to the r
   Time: ${duration || "[Not specified]"}
   Title: [insert the exact title you generated above]
 
-After those five lines, write 2–3 sentences in third person ("Our next speaker is Shah..."). Be intentionally vague about the speech's content — build intrigue without revealing the theme or argument. End with exactly: "The title of his speech is '[title]'. Please welcome, Shah!" This section is read by the introducer, not by Shah.
+After those five lines, write 2–3 sentences in third person ("Our next speaker is ${speaker}..."). Be intentionally vague about the speech's content — build intrigue without revealing the theme or argument. End with exactly: "The title of the speech is '[title]'. Please welcome, ${speaker}!" This section is read by the introducer, not by ${speaker}. Do not assume the speaker's gender — avoid he/she/his/her throughout this card.
 
 ## HOOK
-The VERY FIRST WORDS Shah delivers on stage — no salutation before this. Use the "${intro_style}" technique to grab the room in the first 30 seconds.
+The VERY FIRST WORDS ${speaker} delivers on stage — no salutation before this. Use the "${intro_style}" technique to grab the room in the first 30 seconds.
 
 ## SALUTATION
-After the hook lands, Shah delivers the Toastmasters salutation:
+After the hook lands, ${speaker} delivers the Toastmasters salutation:
 "Mr. and Mrs. Toastmaster, distinguished Toastmasters, fellow Toastmasters, and guests..."
 
 ## BODY
