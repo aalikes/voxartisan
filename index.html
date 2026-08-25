@@ -279,20 +279,13 @@ function switchDashTab(tab) {
 }
 
 // ── API access ────────────────────────────────────────────────
-// NOT A SECRET. This page is public static HTML, so this value is visible to
-// anyone who opens View Source. It gates /api/* against bots and endpoint
-// scanners — which matters because the AI routes spend DeepSeek credit per
-// call — but it does not authenticate anyone. For real access control, put
-// Cloudflare Access in front of the project.
-//
-// Must match the API_SHARED_SECRET environment variable on the Pages project.
-const API_KEY = '__SET_ME__';
-
+// No key here on purpose. This page is public static HTML, so anything we put
+// in it is readable in View Source and authenticates nobody. The /api gate
+// instead recognises the browser's own Sec-Fetch-Site: same-origin header,
+// which script cannot forge — so calls from this page are let through and
+// calls from other sites are not. Nothing to configure, nothing to leak.
 function apiFetch(url, opts = {}) {
-  return fetch(url, {
-    ...opts,
-    headers: { ...(opts.headers || {}), 'X-VoxArtisan-Key': API_KEY },
-  });
+  return fetch(url, opts);
 }
 
 async function loadPastSpeeches() {
