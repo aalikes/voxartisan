@@ -1,0 +1,20 @@
+# Files here are NOT uploaded as static assets.
+#
+# wrangler.toml sets pages_build_output_dir = ".", which makes the whole repo
+# root the asset directory — so anything not excluded is downloadable from the
+# live site. Wrangler has its own built-in ignore list, but it is undocumented
+# and hard-coded, so the exclusions that matter are stated explicitly here.
+#
+# functions/ is deliberately absent: Pages compiles that directory into Workers
+# rather than serving it, and excluding it risks breaking that build.
+
+.git
+.github
+.gitignore
+.assetsignore
+.wrangler
+node_modules
+
+# Applied to D1 with `wrangler d1 execute`, never served.
+db
+wrangler.toml
