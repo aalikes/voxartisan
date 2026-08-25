@@ -38,10 +38,11 @@ export function error(msg, status = 500) {
 /**
  * Strip credentials out of text before it reaches a client.
  *
- * Upstream error bodies are not safe to relay verbatim. Google's 403 for a
- * suspended key quotes the key back at you, so relaying the body handed our
- * Gemini key to anyone who could trigger the error. Assume every provider may
- * do this.
+ * Upstream error bodies are not safe to relay verbatim: a provider's
+ * rejection can quote the offending credential straight back at you, and
+ * passing that along hands our key to anyone able to trigger the error. This
+ * is not hypothetical — it is why this function exists. Assume any provider
+ * may do it.
  *
  * `secrets` are the exact values we hold — redacting those is the reliable
  * part. The patterns catch key shapes we might not be holding (a key belonging
@@ -55,7 +56,7 @@ export function redact(text, ...secrets) {
   }
 
   return out
-    .replace(/AIza[0-9A-Za-z_-]{10,}/g, '«redacted»')        // Google
+    .replace(/AIza[0-9A-Za-z_-]{10,}/g, '«redacted»')        // AIza-prefixed
     .replace(/\bsk-[A-Za-z0-9_-]{10,}/g, '«redacted»')       // OpenAI / DeepSeek
     .replace(/\bxi-[A-Za-z0-9_-]{10,}/g, '«redacted»')       // ElevenLabs
     .replace(/\b[A-Fa-f0-9]{32,}\b/g, '«redacted»');         // bare hex tokens
