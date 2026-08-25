@@ -1,4 +1,4 @@
-// Shared-secret gate for every /api/* route.
+// Shared-secret gate and CORS policy for every /api/* route.
 //
 // Pages runs this before any handler in this directory, so routes stay free of
 // per-route auth boilerplate and a new route cannot forget to opt in.
@@ -14,7 +14,7 @@
 // determined person. For real access control put Cloudflare Access in front of
 // the project — that is a dashboard setting, needs no code, and unlike this it
 // actually authenticates a human.
-import { error, handleOptions } from '../_shared.js';
+import { error, handleOptions, applyCors } from '../_shared.js';
 
 const HEADER = 'X-VoxArtisan-Key';
 
@@ -33,8 +33,16 @@ function safeEqual(a, b) {
 export async function onRequest(context) {
   const { request, env, next } = context;
 
+  // Every exit goes through applyCors, so the Allow-Origin decision lives in
+  // one place and a route cannot get it wrong — including the error replies
+  // below, which a browser must be able to read.
+  return applyCors(await gate(context), request, env);
+}
+
+async function gate({ request, env, next }) {
   // CORS preflight carries no custom headers by design, so it cannot be gated.
-  // It reveals nothing: the actual request still has to present the key.
+  // It reveals nothing: the actual request still has to present the key, and
+  // an origin off the allowlist gets no Allow-Origin on this reply either.
   if (request.method === 'OPTIONS') return handleOptions();
 
   const expected = env.API_SHARED_SECRET;
