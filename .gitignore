@@ -8,3 +8,6 @@ node_modules/
 # Wrangler's local cache. Holds the Cloudflare account id and a connection
 # trace with approximate location — not things to publish.
 .wrangler/
+
+# Seeded canvas payload — large and regenerable from the .dc.html sources.
+design/voxartisan-revamp.html

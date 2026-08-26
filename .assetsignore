@@ -18,3 +18,6 @@ node_modules
 # Applied to D1 with `wrangler d1 execute`, never served.
 db
 wrangler.toml
+
+# Mockup sources — not part of the app.
+design

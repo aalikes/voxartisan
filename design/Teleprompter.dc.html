@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Space+Grotesk:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; background: #08090A; }
+    a { color: #C97A52; } a:hover { color: #E09A72; }
+    * { box-sizing: border-box; }
+  </style>
+</helmet>
+
+<div style="font-family: 'Space Grotesk', system-ui, sans-serif; background: #08090A; color: #F2EFE9; min-height: 100%; display: flex; flex-direction: column">
+
+  <!-- Minimal stage chrome -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 40px; border-bottom: 1px solid rgba(242,239,233,0.07); flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 22px">
+      <span style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #6E6A64">Kreyòl</span>
+      <div style="display: flex; align-items: center; gap: 9px">
+        <span style="width: 7px; height: 7px; border-radius: 50%; background: #C97A52"></span>
+        <span style="font-family: 'Space Grotesk', monospace; font-size: 26px; font-weight: 500; letter-spacing: -0.01em; font-variant-numeric: tabular-nums">4:12</span>
+        <span style="font-size: 11px; color: #6E6A64">/ 7:00</span>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 7px; border: 1px solid rgba(242,239,233,0.16); border-radius: 4px; padding: 6px 11px">
+        <span style="font-size: 11px; color: #9A958D">Aa</span>
+        <span style="font-size: 11px; color: #F2EFE9; font-weight: 500">38</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px; border: 1px solid rgba(242,239,233,0.16); border-radius: 4px; padding: 6px 11px">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M4 6.5v3M12 6.5v3" stroke="#9A958D" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span style="font-size: 11px; color: #F2EFE9; font-weight: 500">0.9×</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timing bar -->
+  <div style="height: 2px; background: rgba(242,239,233,0.08); flex-shrink: 0">
+    <div style="width: 60%; height: 100%; background: #C97A52"></div>
+  </div>
+
+  <!-- The script -->
+  <div style="flex-grow: 1; padding: 60px 90px; position: relative">
+
+    <!-- Eyeline marker -->
+    <div style="position: absolute; left: 0; right: 0; top: 232px; height: 1px; background: rgba(201,122,82,0.28)"></div>
+    <div style="position: absolute; left: 34px; top: 226px; width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 9px solid rgba(201,122,82,0.55)"></div>
+
+    <div style="font-family: 'Newsreader', Georgia, serif; font-size: 38px; line-height: 1.58; letter-spacing: -0.005em; max-width: 940px">
+      <div style="color: #4A4640; margin-bottom: 30px">Mesye ak Madam Toastmaster, Toastmasters distenge, konfrè Toastmasters, ak envite nou yo&nbsp;—</div>
+      <div style="margin-bottom: 12px">Diznèfmil moun t ap gade.</div>
+      <div style="margin-bottom: 12px">Yo tout te ri.</div>
+      <div style="margin-bottom: 30px; color: #C97A52; font-size: 15px; font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.10em; text-transform: uppercase; font-weight: 500">Look at the room · let it sit</div>
+      <div style="margin-bottom: 12px">Epi jèn gason an mache soti nan teren an, li pran yon avyon lakay li,</div>
+      <div style="margin-bottom: 12px">epi li rele yon janitè a minwi pou l ouvri yon jimnazyòm lekòl segondè.</div>
+      <div style="color: #4A4640">Chak moun nan sal sa a deja kanpe dèyè pipit sa a epi bagay la pa t mache.</div>
+    </div>
+  </div>
+
+  <!-- Foot -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 40px; border-top: 1px solid rgba(242,239,233,0.07); font-size: 11px; color: #6E6A64; flex-shrink: 0">
+    <span>Space to pause · ↑ ↓ to scrub</span>
+    <span>Kò diskou a — 3 of 5</span>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
