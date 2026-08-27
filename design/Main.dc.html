@@ -1,0 +1,200 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400&family=Space+Grotesk:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; background: #FAF7F2; }
+    a { color: #A05A3C; } a:hover { color: #7E4429; }
+    * { box-sizing: border-box; }
+  </style>
+</helmet>
+
+<div style="font-family: 'Space Grotesk', system-ui, sans-serif; background: #FAF7F2; color: #14100C; min-height: 100%; padding: 0 0 64px">
+
+  <!-- Header -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 22px 56px; border-bottom: 1px solid rgba(20,16,12,0.10)">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+        <path d="M13 2 L21.5 7 L21.5 17 L13 22 L4.5 17 L4.5 7 Z" stroke="#3A5580" stroke-width="1.4" fill="none"/>
+        <path d="M13 7.5 L17 10 L17 15 L13 17.5 L9 15 L9 10 Z" fill="#A05A3C"/>
+      </svg>
+      <div style="font-family: 'Newsreader', Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: -0.01em">
+        Vox<span style="color: #A05A3C">Artisan</span>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 28px; font-size: 13px; color: #6B6157">
+      <span>Library</span>
+      <span style="color: #14100C; font-weight: 500">New speech</span>
+      <div style="width: 30px; height: 30px; border-radius: 50%; background: #3A5580; color: #FAF7F2; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700">MJ</div>
+    </div>
+  </div>
+
+  <div style="max-width: 1000px; margin: 0 auto; padding: 0 56px">
+
+    <!-- Title block -->
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; padding: 44px 0 26px">
+      <div style="min-width: 0">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px">
+          <span style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #A05A3C; font-weight: 700">Engaging Humor · Level 2</span>
+          <span style="width: 3px; height: 3px; border-radius: 50%; background: #C4BBAE"></span>
+          <span style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #8A8075">7 minutes</span>
+        </div>
+        <h1 style="font-family: 'Newsreader', Georgia, serif; font-size: 46px; line-height: 1.05; font-weight: 400; letter-spacing: -0.02em; margin: 0; text-wrap: pretty">
+          Back to You, Mister Toastmaster
+        </h1>
+      </div>
+      <div style="display: flex; gap: 10px; flex-shrink: 0">
+        <button style="font-family: inherit; font-size: 13px; padding: 10px 16px; border-radius: 4px; border: 1px solid rgba(20,16,12,0.20); background: transparent; color: #14100C; cursor: pointer">Save</button>
+        <button style="font-family: inherit; font-size: 13px; padding: 10px 18px; border-radius: 4px; border: 1px solid #14100C; background: #14100C; color: #FAF7F2; cursor: pointer; font-weight: 500">Export</button>
+      </div>
+    </div>
+
+    <!-- Language tabs -->
+    <div style="display: flex; align-items: center; gap: 4px; border-bottom: 1px solid rgba(20,16,12,0.10); margin-bottom: 4px">
+      <div style="padding: 9px 15px; font-size: 13px; font-weight: 500; border-bottom: 2px solid #A05A3C; margin-bottom: -1px; color: #14100C">Kreyòl</div>
+      <div style="padding: 9px 15px; font-size: 13px; color: #8A8075; border-bottom: 2px solid transparent; margin-bottom: -1px">English</div>
+      <div style="padding: 9px 15px; font-size: 13px; color: #8A8075; border-bottom: 2px solid transparent; margin-bottom: -1px">Français</div>
+      <div style="padding: 9px 15px; font-size: 13px; color: #8A8075; border-bottom: 2px solid transparent; margin-bottom: -1px">Español</div>
+      <div style="flex-grow: 1"></div>
+      <div style="display: flex; gap: 2px; padding: 3px; background: rgba(20,16,12,0.05); border-radius: 5px; margin-bottom: 6px">
+        <div style="padding: 5px 12px; font-size: 12px; background: #FAF7F2; border-radius: 3px; font-weight: 500; box-shadow: 0 1px 2px rgba(20,16,12,0.08)">Script</div>
+        <div style="padding: 5px 12px; font-size: 12px; color: #6B6157">Teleprompter</div>
+        <div style="padding: 5px 12px; font-size: 12px; color: #6B6157">Email</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) 264px; gap: 44px; align-items: start; padding-top: 34px">
+
+      <!-- The speech, typeset -->
+      <div style="min-width: 0">
+
+        <!-- Introducer's card -->
+        <div style="border: 1px solid rgba(58,85,128,0.28); background: rgba(58,85,128,0.045); border-radius: 6px; padding: 22px 24px; margin-bottom: 40px">
+          <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #3A5580; font-weight: 700; margin-bottom: 14px">Introducer's card — read before you speak</div>
+          <div style="display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 7px 16px; font-size: 13px; margin-bottom: 16px">
+            <div style="color: #8A8075">Chemen</div><div>Engaging Humor</div>
+            <div style="color: #8A8075">Nivo</div><div>2</div>
+            <div style="color: #8A8075">Tan</div><div>7 minit</div>
+          </div>
+          <p style="font-family: 'Newsreader', Georgia, serif; font-size: 16px; line-height: 1.62; margin: 0; color: #3E362D">
+            Pwochen oratè nou an konnen yon bagay sou tonbe devan tout moun. Yo pral rakonte nou ki sa ki rive apre sa. Tit diskou a se «&nbsp;Tounen Ba Ou, Mesye Toastmaster&nbsp;». Ann akeyi Marie&nbsp;!
+          </p>
+        </div>
+
+        <!-- HOOK -->
+        <div style="margin-bottom: 34px">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px">
+            <span style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A05A3C; font-weight: 700">Hook</span>
+            <span style="flex-grow: 1; height: 1px; background: rgba(20,16,12,0.10)"></span>
+          </div>
+          <p style="font-family: 'Newsreader', Georgia, serif; font-size: 20px; line-height: 1.68; margin: 0 0 14px; color: #14100C; text-wrap: pretty">
+            Kat bal. Yonn apre lòt. Okenn pa t manyen panye a.
+          </p>
+          <p style="font-family: 'Newsreader', Georgia, serif; font-size: 20px; line-height: 1.68; margin: 0; color: #14100C; text-wrap: pretty">
+            <span style="display: inline-block; font-family: 'Space Grotesk', sans-serif; font-size: 11px; letter-spacing: 0.04em; color: #A05A3C; background: rgba(160,90,60,0.09); border-radius: 3px; padding: 2px 8px; margin-right: 8px; vertical-align: 2px">Long pause</span>
+            Li te gen dizwitan.
+          </p>
+        </div>
+
+        <!-- SALUTATION -->
+        <div style="margin-bottom: 34px">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px">
+            <span style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A05A3C; font-weight: 700">Salitasyon</span>
+            <span style="flex-grow: 1; height: 1px; background: rgba(20,16,12,0.10)"></span>
+          </div>
+          <p style="font-family: 'Newsreader', Georgia, serif; font-size: 20px; line-height: 1.68; margin: 0; color: #14100C; text-wrap: pretty">
+            Mesye ak Madam Toastmaster, Toastmasters distenge, konfrè Toastmasters, ak envite nou yo&nbsp;—
+          </p>
+        </div>
+
+        <!-- BODY -->
+        <div style="margin-bottom: 34px">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px">
+            <span style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A05A3C; font-weight: 700">Kò diskou a</span>
+            <span style="flex-grow: 1; height: 1px; background: rgba(20,16,12,0.10)"></span>
+          </div>
+          <p style="font-family: 'Newsreader', Georgia, serif; font-size: 20px; line-height: 1.68; margin: 0 0 20px; color: #14100C; text-wrap: pretty">
+            Diznèfmil moun t ap gade. Yo tout te ri. Epi jèn gason an mache soti nan teren an, li pran yon avyon lakay li, epi li rele yon janitè a minwi pou l ouvri yon jimnazyòm lekòl segondè.
+          </p>
+          <p style="font-family: 'Newsreader', Georgia, serif; font-size: 20px; line-height: 1.68; margin: 0 0 20px; color: #14100C; text-wrap: pretty">
+            <span style="display: inline-block; font-family: 'Space Grotesk', sans-serif; font-size: 11px; letter-spacing: 0.04em; color: #A05A3C; background: rgba(160,90,60,0.09); border-radius: 3px; padding: 2px 8px; margin-right: 8px; vertical-align: 2px">Look at the room</span>
+            Chak moun nan sal sa a deja kanpe dèyè pipit sa a epi bagay la pa t mache. Ou pèdi plas ou. Limyè wouj la limen. Ou tande silans kote ta dwe gen yon ri.
+          </p>
+          <blockquote style="font-family: 'Newsreader', Georgia, serif; font-style: italic; font-size: 20px; line-height: 1.6; margin: 0 0 20px; padding-left: 22px; border-left: 2px solid #A05A3C; color: #3E362D">
+            Pwoveb la di&nbsp;: «&nbsp;Piti piti zwazo fè nich li.&nbsp;»
+          </blockquote>
+          <p style="font-family: 'Newsreader', Georgia, serif; font-size: 20px; line-height: 1.68; margin: 0; color: #14100C; text-wrap: pretty">
+            Jimnazyòm li a te louvri a minwi. Pa nou an louvri chak semèn, epi li rele yon reyinyon klèb.
+          </p>
+        </div>
+
+        <!-- CLOSE -->
+        <div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px">
+            <span style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A05A3C; font-weight: 700">Fèmti</span>
+            <span style="flex-grow: 1; height: 1px; background: rgba(20,16,12,0.10)"></span>
+          </div>
+          <p style="font-family: 'Newsreader', Georgia, serif; font-size: 20px; line-height: 1.68; margin: 0 0 26px; color: #14100C; text-wrap: pretty">
+            Se konsa, semèn pwochèn, lè bagay la pa mache pou ou&nbsp;— epi l ap rive&nbsp;— w ap di sis mo sa yo, epi w ap tounen chita. Epi w ap retounen.
+          </p>
+          <p style="font-family: 'Newsreader', Georgia, serif; font-size: 22px; line-height: 1.5; margin: 0; color: #14100C; font-weight: 500">
+            Tounen ba ou, Mesye&nbsp;— oswa Madam&nbsp;— Toastmaster.
+          </p>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(20,16,12,0.10); font-size: 12px; color: #8A8075">
+          <span>842 mo</span><span>·</span><span>~6 min 40 s nan vitès pale</span><span>·</span><span>Mo jounen an&nbsp;: <em style="color: #14100C; font-style: normal">kenbe</em>&nbsp;✓</span>
+        </div>
+      </div>
+
+      <!-- Coaching rail -->
+      <div style="display: flex; flex-direction: column; gap: 12px; position: sticky; top: 24px">
+
+        <div style="border: 1px solid rgba(20,16,12,0.12); border-radius: 6px; padding: 16px 17px; background: #FFFDFA">
+          <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 12px">
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M6 6.5v7M14 6.5v7M2.5 9v2M17.5 9v2" stroke="#3A5580" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <span style="font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; font-weight: 700; color: #3A5580">Narrate</span>
+          </div>
+          <div style="font-size: 12px; color: #6B6157; line-height: 1.5; margin-bottom: 12px">Hear it in a Kreyòl-capable voice before you stand up.</div>
+          <div style="display: flex; align-items: center; gap: 8px">
+            <div style="flex-grow: 1; border: 1px solid rgba(20,16,12,0.16); border-radius: 4px; padding: 7px 10px; font-size: 12px; background: #FAF7F2">Rachel</div>
+            <button style="font-family: inherit; font-size: 12px; padding: 7px 13px; border-radius: 4px; border: 1px solid #3A5580; background: #3A5580; color: #FAF7F2; cursor: pointer; font-weight: 500">Play</button>
+          </div>
+        </div>
+
+        <div style="border: 1px solid rgba(20,16,12,0.12); border-radius: 6px; padding: 16px 17px; background: #FFFDFA">
+          <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 12px">
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#3A5580" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span style="font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; font-weight: 700; color: #3A5580">Proofread</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px">
+            <span style="font-family: 'Newsreader', Georgia, serif; font-size: 34px; line-height: 1; font-weight: 400">86</span>
+            <span style="font-size: 11px; color: #8A8075">/ 100 stage-ready</span>
+          </div>
+          <div style="height: 4px; border-radius: 2px; background: rgba(20,16,12,0.09); margin-bottom: 12px; overflow: hidden">
+            <div style="width: 86%; height: 100%; background: #A05A3C"></div>
+          </div>
+          <div style="font-size: 12px; color: #6B6157; line-height: 1.5">4 suggestions — pacing in the middle beat, one repeated word.</div>
+        </div>
+
+        <div style="border: 1px solid rgba(20,16,12,0.12); border-radius: 6px; padding: 16px 17px; background: #FFFDFA">
+          <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 12px">
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M3 13.5L13 3.5l3.5 3.5L6.5 17H3v-3.5z" stroke="#3A5580" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <span style="font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; font-weight: 700; color: #3A5580">Refine</span>
+          </div>
+          <div style="border: 1px solid rgba(20,16,12,0.16); border-radius: 4px; padding: 9px 11px; font-size: 12px; color: #8A8075; line-height: 1.5; background: #FAF7F2; min-height: 58px">Make the close land harder and cut thirty seconds.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

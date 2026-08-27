@@ -1,0 +1,34 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Ayiti — proposed" },
+    { "id": "page-2", "name": "Other directions" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1000, "h": 1560, "page": "page-1", "title": "Speech output" },
+    { "file": "Landing.dc.html", "x": 1120, "y": 0, "w": 1000, "h": 1180, "page": "page-1", "title": "Landing" },
+    { "file": "Teleprompter.dc.html", "x": 1120, "y": 1340, "w": 1000, "h": 620, "page": "page-1", "title": "Teleprompter — stage" },
+    { "file": "Mobile.dc.html", "x": 2240, "y": 0, "w": 390, "h": 844, "page": "page-1", "title": "Phone" },
+
+    { "file": "DirectionLectern.dc.html", "x": 0, "y": 0, "w": 900, "h": 1240, "page": "page-2", "title": "Lectern" },
+    { "file": "DirectionPodium.dc.html", "x": 1020, "y": 0, "w": 940, "h": 1080, "page": "page-2", "title": "Podium" }
+  ],
+  "annotations": [
+    {
+      "id": "note-fix",
+      "x": 0,
+      "y": -150,
+      "w": 460,
+      "page": "page-1",
+      "text": "The fix that matters most: the speech is typeset, not dumped.\n\nToday the app prints the model's raw markdown — ## TITLE, ## HOOK — in a monospace box. Here each section is a real section, [stage directions] read as cues rather than clutter, and prose is set in a serif you can actually read aloud from."
+    },
+    {
+      "id": "note-directions",
+      "x": 0,
+      "y": -190,
+      "w": 520,
+      "page": "page-2",
+      "text": "Two alternates to the proposed direction, same screen so the comparison is fair.\n\nLECTERN — print/editorial. Caslon, rules, mono labels. Closest to what you have now, but committed. Quietest; least distinctive.\n\nPODIUM — the app as stage equipment. Dark by default, amber focus, the teleprompter aesthetic everywhere. Strong for performance; heavier for long form-filling."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}
