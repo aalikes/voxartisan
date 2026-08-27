@@ -136,7 +136,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lang-sub-tabs{display:flex;gap:6px;padding:14px 0 0}
 .lang-sub-tab{padding:4px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;font-family:var(--font-mono);font-weight:500;cursor:pointer;color:var(--gray-600);background:none;transition:all 0.15s}
 .lang-sub-tab.active{background:var(--black);color:var(--white);border-color:var(--black)}
-.email-text{font-family:var(--font-mono);font-size:13px;line-height:1.7;white-space:pre-wrap;padding:20px;background:var(--gray-50);border-radius:var(--radius-lg);margin-top:14px;min-height:200px;max-height:600px;overflow-y:auto;border:1px solid var(--border)}
+.email-text{font-family:var(--font-mono);font-size:13px;line-height:1.7;white-space:pre-wrap;padding:20px;background:var(--gray-50);border-radius:var(--radius-lg);margin-top:14px;min-height:200px;border:1px solid var(--border)}
 .copy-row{display:flex;justify-content:flex-end;margin-top:10px}
 .btn-copy{padding:7px 14px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:12px;font-family:var(--font-mono);cursor:pointer;background:var(--white);color:var(--gray-600);transition:all 0.15s}
 .btn-copy:hover{border-color:var(--black);color:var(--black)}
@@ -213,7 +213,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* ── Typeset speech ── */
 /* The model returns markdown-ish sections; they are parsed and rendered as
    real sections rather than printed raw in a monospace box. */
-.speech{margin-top:14px;max-height:640px;overflow-y:auto;padding-right:4px}
+/* The speech flows with the page. It used to sit in a 640px scroll box, which
+   put a second scrollbar inside a page that already scrolls: the wheel fought
+   over which one moved, Cmd+F skipped past text that was scrolled out of view,
+   and printing cut the speech off at the box. */
+.speech{margin-top:14px}
 .sp-sec{margin-bottom:32px}
 .sp-sec:last-child{margin-bottom:0}
 .sp-label{display:flex;align-items:center;gap:12px;margin-bottom:13px}
@@ -816,7 +820,13 @@ function setSpeech(text) {
   l.directed = text;
   l.teleprompter = toTeleprompter(text);
   const el = document.getElementById('speechTextEl');
-  if (el) el.textContent = state.currentTab === 'teleprompter' ? l.teleprompter : text;
+  if (!el) return;
+  // Go back through the same rendering the tab was built with. Writing
+  // textContent here replaced the typeset sections with raw "## HOOK"
+  // markdown, so one refine undid the typesetting for the rest of the session.
+  el.innerHTML = state.currentTab === 'teleprompter'
+    ? escHtml(l.teleprompter)
+    : renderSpeechHtml(text);
 }
 
 function busy(label) { return `<span class="spin"></span>${label}`; }
