@@ -1,0 +1,12 @@
+{
+  "name": "voxartisan",
+  "private": true,
+  "type": "module",
+  "description": "Toastmasters speech builder — static SPA plus Cloudflare Pages Functions.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
