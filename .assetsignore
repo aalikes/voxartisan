@@ -18,3 +18,9 @@ node_modules
 # Applied to D1 with `wrangler d1 execute`, never served.
 db
 wrangler.toml
+
+# Development only. Serving these would publish the test fixtures and the
+# repository layout to anyone who guessed the path.
+package.json
+package-lock.json
+test
