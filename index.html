@@ -315,7 +315,7 @@ const state = {
   voices: null, voiceId: '', ttsBusy: false, ttsErr: '', audioUrl: null
 };
 
-const STEP_NAMES = ['Pre-Speech','Metadata','Introduction','Evaluator','Checklist','Languages'];
+const STEP_NAMES = ['Checklist','Final Touches','Pre-Speech','Metadata','Introduction','Evaluator'];
 const CHECKLIST_ITEMS = [
   'Hook is vague about content — intrigue without spoiling',
   'Salutation positioned after initial premise, not at opening',
@@ -485,6 +485,46 @@ function getStepContent() {
   const d = state.formData;
   switch(state.step) {
     case 1: return `
+      <div class="checklist-head">
+        <div class="section-title" style="margin:28px 0 0;border:none;padding:0">Pre-Generation Checklist</div>
+        <button class="btn-sm" onclick="setAllChecks(${allChecked() ? 'false' : 'true'})">${allChecked() ? 'Clear all' : 'Select all'}</button>
+      </div>
+      <div class="notice notice-info">Check each item before generating. A strong checklist = a stronger speech.</div>
+      <ul class="checklist">
+        ${CHECKLIST_ITEMS.map((item,i)=>`
+          <li>
+            <div class="check-box ${state.checklist[i]?'checked':''}" onclick="toggleCheck(${i})"></div>
+            <span>${item}</span>
+          </li>`).join('')}
+      </ul>
+      <div class="field-hint" style="margin:-8px 0 26px">${checkedCount()} of ${CHECKLIST_ITEMS.length} checked</div>
+
+      ${btnRow(false, true)}`;
+
+    case 2: return `
+      <div class="section-title">Final Touches</div>
+      <div class="notice notice-info">Pick any combination — only the languages you select are generated. The first one you pick is the primary: it is the tab the finished speech opens on.</div>
+      <div style="margin:8px 0 28px">
+        <label>Generate speech in</label>
+        <div class="lang-toggle-group">
+          <div class="lang-toggle ${state.selectedLangs.includes('EN')?'selected':''}" onclick="toggleLang('EN')">EN · English</div>
+          <div class="lang-toggle ${state.selectedLangs.includes('FR')?'selected':''}" onclick="toggleLang('FR')">FR · Français</div>
+          <div class="lang-toggle ${state.selectedLangs.includes('ES')?'selected':''}" onclick="toggleLang('ES')">ES · Español</div>
+          <div class="lang-toggle ${state.selectedLangs.includes('HT')?'selected':''}" onclick="toggleLang('HT')">HT · Kreyòl</div>
+        </div>
+        <div class="field-hint" style="margin-top:10px">${state.selectedLangs.length} language${state.selectedLangs.length!==1?'s':''} selected · primary: ${state.selectedLangs[0] || '—'}</div>
+      </div>
+      <div class="section-title">Custom Instructions</div>
+      <div class="field-group">
+        <label>Anything else the writer should follow (optional)</label>
+        <textarea id="f_customInstructions" oninput="saveCustomInstructions(this.value)"
+          placeholder="e.g. Open with a question, not a statement. Keep sentences under 15 words — I speak fast when nervous. No sports metaphors."
+          style="min-height:110px">${escHtml(d.customInstructions || '')}</textarea>
+        <div class="field-hint">Applied to every language, and remembered for your next speech.</div>
+      </div>
+      ${btnRow(true, true)}`;
+
+    case 3: return `
       <div class="section-title">Pre-Speech Setup</div>
       <div class="field-group">
         <div class="field-row">
@@ -508,7 +548,7 @@ function getStepContent() {
       <div class="field-group" style="margin-top:12px"><label>Kreyòl</label><input id="f_wordHT" type="text" placeholder="e.g. Kenbe" value="${d.wordHT||''}"></div>
       ${btnRow(false, true)}`;
 
-    case 2: return `
+    case 4: return `
       <div class="section-title">Speech Metadata</div>
       <div class="field-group">
         <div class="field-row">
@@ -546,7 +586,7 @@ function getStepContent() {
       </div>
       ${btnRow(true, true)}`;
 
-    case 3: return `
+    case 5: return `
       <div class="section-title">Introduction for Toastmaster / Evaluator</div>
       <div class="notice notice-info">This introduction is delivered by the Toastmaster of the Day before your speech. Keep it vague — no spoilers.</div>
       <div class="field-group"><label>Opening Hook Line</label>
@@ -567,57 +607,18 @@ function getStepContent() {
       </div>
       ${btnRow(true, true)}`;
 
-    case 4: return `
+    case 6: return `
       <div class="section-title">Evaluator Information</div>
       <div class="field-group"><label>Evaluator Name</label><input id="f_evaluatorName" type="text" placeholder="Full name" value="${d.evaluatorName||''}"></div>
       <div class="field-row">
         <div><label>Evaluator's Club</label><input id="f_evaluatorClub" type="text" placeholder="Club name" value="${d.evaluatorClub||''}"></div>
         <div><label>Delivery Date</label><input id="f_deliveryDate" type="date" value="${d.deliveryDate||''}"></div>
       </div>
-      ${btnRow(true, true)}`;
-
-    case 5: return `
-      <div class="checklist-head">
-        <div class="section-title" style="margin:28px 0 0;border:none;padding:0">Pre-Generation Checklist</div>
-        <button class="btn-sm" onclick="setAllChecks(${allChecked() ? 'false' : 'true'})">${allChecked() ? 'Clear all' : 'Select all'}</button>
-      </div>
-      <div class="notice notice-info">Check each item before generating. A strong checklist = a stronger speech.</div>
-      <ul class="checklist">
-        ${CHECKLIST_ITEMS.map((item,i)=>`
-          <li>
-            <div class="check-box ${state.checklist[i]?'checked':''}" onclick="toggleCheck(${i})"></div>
-            <span>${item}</span>
-          </li>`).join('')}
-      </ul>
-      <div class="field-hint" style="margin:-8px 0 26px">${checkedCount()} of ${CHECKLIST_ITEMS.length} checked</div>
-
-      <div class="section-title">Custom Instructions</div>
-      <div class="field-group">
-        <label>Anything else the writer should follow</label>
-        <textarea id="f_customInstructions" oninput="saveCustomInstructions(this.value)"
-          placeholder="e.g. Open with a question, not a statement. Keep sentences under 15 words — I speak fast when nervous. No sports metaphors."
-          style="min-height:110px">${escHtml(d.customInstructions || '')}</textarea>
-        <div class="field-hint">Applied to every language, and remembered for your next speech.</div>
-      </div>
-      ${btnRow(true, true)}`;
-
-    case 6: return `
-      <div class="section-title">Select Languages</div>
-      <div class="notice notice-info">Choose one, two, or all three. Only your selected languages are generated.</div>
-      <div style="margin:8px 0 28px">
-        <label>Generate speech in</label>
-        <div class="lang-toggle-group">
-          <div class="lang-toggle ${state.selectedLangs.includes('EN')?'selected':''}" onclick="toggleLang('EN')">EN · English</div>
-          <div class="lang-toggle ${state.selectedLangs.includes('FR')?'selected':''}" onclick="toggleLang('FR')">FR · Français</div>
-          <div class="lang-toggle ${state.selectedLangs.includes('ES')?'selected':''}" onclick="toggleLang('ES')">ES · Español</div>
-          <div class="lang-toggle ${state.selectedLangs.includes('HT')?'selected':''}" onclick="toggleLang('HT')">HT · Kreyòl</div>
-        </div>
-        <div class="field-hint" style="margin-top:10px">${state.selectedLangs.length} language${state.selectedLangs.length!==1?'s':''} selected</div>
-      </div>
       <div class="btn-row">
         <button class="btn btn-ghost" onclick="prevStep()">← Back</button>
         <button class="btn btn-primary" onclick="generateSpeech()" ${state.selectedLangs.length===0?'disabled':''}>Generate Speech →</button>
       </div>`;
+
   }
 }
 
@@ -629,7 +630,7 @@ function btnRow(showBack, showNext) {
 }
 
 function attachStepListeners() {
-  if (state.step === 2) renderSuggest();
+  if (state.step === 4) renderSuggest();   // Metadata
 }
 
 // Speakers the introducer has announced before. The name is a form default,
