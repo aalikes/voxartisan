@@ -364,6 +364,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // No OAuth needed — VoxArtisan is free and open
   state.tokens = { free: true };
   state.formData.customInstructions = readCustomInstructions();
+  state.formData.speaker = readSpeakers()[0];
   render();
 });
 
@@ -516,7 +517,15 @@ function getStepContent() {
         </div>
         <div class="field-group"><label>Project Name</label><input id="f_project" type="text" placeholder="e.g. Ice Breaker" value="${d.project||''}"></div>
         <div class="field-row">
-          <div><label>Your Name</label><input id="f_speaker" type="text" placeholder="How the introducer should announce you" value="${d.speaker||''}"></div>
+          <div>
+            <label>Your Name</label>
+            <input id="f_speaker" type="text" list="speakerNames" autocomplete="name"
+              placeholder="How the introducer should announce you" value="${escHtml(d.speaker || '')}">
+            <datalist id="speakerNames">
+              ${readSpeakers().map(n => `<option value="${escHtml(n)}"></option>`).join('')}
+            </datalist>
+            ${readSpeakers().length > 1 ? `<div class="field-hint">${readSpeakers().length} saved names — start typing to pick one.</div>` : ''}
+          </div>
           <div><label>Club Name</label><input id="f_club" type="text" placeholder="CEO Toastmasters" value="${d.club||'CEO Toastmasters'}"></div>
         </div>
       </div>
@@ -623,6 +632,33 @@ function attachStepListeners() {
   if (state.step === 2) renderSuggest();
 }
 
+// Speakers the introducer has announced before. The name is a form default,
+// not a prompt default: the prompt still takes whatever the field holds, so
+// this does not bring back the hard-coded name that once made every speech
+// this tool produced belong to one person.
+const SPEAKER_KEY = 'va_speaker_names';
+const DEFAULT_SPEAKER = 'Shah Saint-Cyr';
+const MAX_SPEAKERS = 8;
+
+function readSpeakers() {
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem(SPEAKER_KEY) || '[]'); } catch (e) { /* private mode */ }
+  if (!Array.isArray(saved)) saved = [];
+  const names = saved.filter(n => typeof n === 'string' && n.trim());
+  return names.length ? names : [DEFAULT_SPEAKER];
+}
+
+// Most recent first, matched case-insensitively so "shah" does not become a
+// second entry alongside "Shah".
+function rememberSpeaker(name) {
+  const clean = String(name || '').trim();
+  if (!clean) return;
+  const rest = readSpeakers().filter(n => n.toLowerCase() !== clean.toLowerCase());
+  try {
+    localStorage.setItem(SPEAKER_KEY, JSON.stringify([clean, ...rest].slice(0, MAX_SPEAKERS)));
+  } catch (e) { /* private mode: this session only */ }
+}
+
 // Custom instructions are standing preferences — how this speaker wants to be
 // written for — not a note about one speech, so they outlive the form.
 const CUSTOM_KEY = 'va_custom_instructions';
@@ -681,6 +717,9 @@ function toggleLang(lang) {
 // ── Generate ─────────────────────────────────────────────────
 async function generateSpeech() {
   collectFormData();
+  // Saved on use rather than on every keystroke, so a half-typed name never
+  // lands in the list.
+  rememberSpeaker(state.formData.speaker);
   const langs = state.selectedLangs.slice();
   const panel = document.getElementById('panelNew');
   panel.innerHTML = `<div class="generating">
@@ -1432,9 +1471,12 @@ async function saveSpeech() {
 }
 
 function startNew() {
-  // Custom instructions survive: they describe the speaker, not the speech.
+  // These survive: they describe the speaker, not the speech.
   state.speeches = null; state.step = 1;
-  state.formData = { customInstructions: readCustomInstructions() };
+  state.formData = {
+    customInstructions: readCustomInstructions(),
+    speaker: readSpeakers()[0],
+  };
   state.checklist = new Array(8).fill(false);
   state.selectedLangs = ['EN']; state.saveStatus = ''; state.dashTab = 'new';
   state.suggestions = null; state.suggestErr = ''; state.usedTitle = -1; state.usedIntro = -1;
