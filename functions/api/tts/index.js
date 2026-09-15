@@ -68,12 +68,22 @@ export async function onRequestPost(context) {
       return error(`ElevenLabs ${upstream.status}: ${errText.slice(0, 300)}`, 502);
     }
 
-    // Pass the body straight through rather than buffering it: narration of a
-    // long speech starts playing while the rest is still arriving.
-    return new Response(upstream.body, {
+    // Buffer rather than streaming the body through. Streaming looked like a
+    // win — playback could start while the rest arrived — but the client calls
+    // res.blob(), which waits for the whole body regardless, so nothing was
+    // gained. What it cost was the length: a chunked response has no
+    // Content-Length, the resulting clip reports duration Infinity, and a
+    // player cannot seek in a clip whose end it does not know. Buffering makes
+    // the narration scrubbable, which is what it is for — a speaker rehearsing
+    // replays one passage, not the whole speech from the top.
+    const audio = await upstream.arrayBuffer();
+
+    return new Response(audio, {
       status: 200,
       headers: {
         'Content-Type': 'audio/mpeg',
+        'Content-Length': String(audio.byteLength),
+        'Accept-Ranges': 'bytes',
         'Cache-Control': 'no-store',
       },
     });

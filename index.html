@@ -105,6 +105,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .check-box.checked{background:var(--black);border-color:var(--black)}
 .check-box.checked::after{content:'';width:10px;height:6px;border-left:1.5px solid white;border-bottom:1.5px solid white;transform:rotate(-45deg) translateY(-1px)}
 
+.checklist-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border-bottom:1px solid var(--border);padding-bottom:8px;margin:28px 0 16px}
+
 /* ── Buttons ── */
 .btn-row{display:flex;justify-content:space-between;align-items:center;margin-top:32px;padding-top:20px;border-top:1px solid var(--border)}
 .btn{padding:10px 20px;border-radius:var(--radius);font-family:var(--font-body);font-size:14px;font-weight:500;cursor:pointer;transition:opacity 0.15s,background 0.15s;border:1px solid transparent}
@@ -193,7 +196,26 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* narrate */
 .tts-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .tts-row select{flex:1;min-width:150px}
-.tts-audio{width:100%;margin-top:14px;height:36px}
+/* A built player rather than <audio controls>: the native bar is 36px of
+   browser chrome that ignores the theme, and its scrubber is dead whenever the
+   clip's duration is unknown. */
+.tts-player{display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 12px;
+  background:var(--sunken);border-radius:var(--radius);flex-wrap:wrap}
+.tts-btn{width:34px;height:34px;flex-shrink:0;border-radius:50%;border:1px solid var(--line-strong);
+  background:var(--surface);color:var(--ink);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-family:var(--font-body);font-size:11px;padding:0;transition:border-color 0.15s}
+.tts-btn:hover{border-color:var(--ink)}
+.tts-btn.primary{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.tts-time{font-size:11px;font-family:var(--font-body);color:var(--muted);
+  font-variant-numeric:tabular-nums;flex-shrink:0;min-width:36px}
+.tts-seek{flex:1;min-width:140px;appearance:none;-webkit-appearance:none;height:4px;border-radius:2px;
+  background:var(--line-strong);cursor:pointer;padding:0;border:none;outline:none}
+.tts-seek::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:14px;height:14px;
+  border-radius:50%;background:var(--accent);cursor:pointer;border:none}
+.tts-seek::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);
+  cursor:pointer;border:none}
+.tts-seek:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.tts-seek:disabled{cursor:default;opacity:0.5}
 
 /* ── Identity ── */
 .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
@@ -341,6 +363,7 @@ window.addEventListener('DOMContentLoaded', () => {
   applyTheme(readTheme());   // re-run: the buttons exist now
   // No OAuth needed — VoxArtisan is free and open
   state.tokens = { free: true };
+  state.formData.customInstructions = readCustomInstructions();
   render();
 });
 
@@ -545,7 +568,10 @@ function getStepContent() {
       ${btnRow(true, true)}`;
 
     case 5: return `
-      <div class="section-title">Pre-Generation Checklist</div>
+      <div class="checklist-head">
+        <div class="section-title" style="margin:28px 0 0;border:none;padding:0">Pre-Generation Checklist</div>
+        <button class="btn-sm" onclick="setAllChecks(${allChecked() ? 'false' : 'true'})">${allChecked() ? 'Clear all' : 'Select all'}</button>
+      </div>
       <div class="notice notice-info">Check each item before generating. A strong checklist = a stronger speech.</div>
       <ul class="checklist">
         ${CHECKLIST_ITEMS.map((item,i)=>`
@@ -554,6 +580,16 @@ function getStepContent() {
             <span>${item}</span>
           </li>`).join('')}
       </ul>
+      <div class="field-hint" style="margin:-8px 0 26px">${checkedCount()} of ${CHECKLIST_ITEMS.length} checked</div>
+
+      <div class="section-title">Custom Instructions</div>
+      <div class="field-group">
+        <label>Anything else the writer should follow</label>
+        <textarea id="f_customInstructions" oninput="saveCustomInstructions(this.value)"
+          placeholder="e.g. Open with a question, not a statement. Keep sentences under 15 words — I speak fast when nervous. No sports metaphors."
+          style="min-height:110px">${escHtml(d.customInstructions || '')}</textarea>
+        <div class="field-hint">Applied to every language, and remembered for your next speech.</div>
+      </div>
       ${btnRow(true, true)}`;
 
     case 6: return `
@@ -587,8 +623,21 @@ function attachStepListeners() {
   if (state.step === 2) renderSuggest();
 }
 
+// Custom instructions are standing preferences — how this speaker wants to be
+// written for — not a note about one speech, so they outlive the form.
+const CUSTOM_KEY = 'va_custom_instructions';
+
+function readCustomInstructions() {
+  try { return localStorage.getItem(CUSTOM_KEY) || ''; } catch (e) { return ''; }
+}
+
+function saveCustomInstructions(value) {
+  state.formData.customInstructions = value;
+  try { localStorage.setItem(CUSTOM_KEY, value); } catch (e) { /* private mode: this session only */ }
+}
+
 function collectFormData() {
-  const fields = ['duration','humorTone','wordEN','wordFR','wordES','wordHT','pathway','level','project','club','speaker','titleEN','titleFR','titleES','titleHT','hook','context','premise','centralMessage','evaluatorName','evaluatorClub','deliveryDate'];
+  const fields = ['duration','humorTone','wordEN','wordFR','wordES','wordHT','pathway','level','project','club','speaker','titleEN','titleFR','titleES','titleHT','hook','context','premise','centralMessage','evaluatorName','evaluatorClub','deliveryDate','customInstructions'];
   fields.forEach(id => {
     const el = document.getElementById('f_'+id);
     if (el) state.formData[id] = el.value;
@@ -604,8 +653,21 @@ function prevStep() {
   if (state.step > 1) { state.step--; renderStep(); }
 }
 
+// Every one of these re-renders the step, which rebuilds the Custom
+// Instructions textarea from state — so collect what is typed first, or a
+// checkbox click throws the note away.
 function toggleCheck(i) {
+  collectFormData();
   state.checklist[i] = !state.checklist[i];
+  renderStep();
+}
+
+function allChecked() { return state.checklist.every(Boolean); }
+function checkedCount() { return state.checklist.filter(Boolean).length; }
+
+function setAllChecks(on) {
+  collectFormData();
+  state.checklist = state.checklist.map(() => on);
   renderStep();
 }
 
@@ -691,6 +753,8 @@ function buildPayload(code) {
       date: d.deliveryDate || '',
     },
     checklist: CHECKLIST_ITEMS.filter((_, i) => state.checklist[i]),
+    // The route has accepted this since the port from app.py; nothing sent it.
+    custom_additions: (d.customInstructions || '').trim(),
   };
 }
 
@@ -1003,6 +1067,25 @@ async function loadVoices() {
 
 function setVoice(id) { state.voiceId = id; }
 
+// What the voice should say is not what the page shows. The script carries
+// section headers, [stage directions], the introducer's card and a word count
+// — narrate it raw and the speaker hears "hash hash hook", their own stage
+// directions read back at them, and "approximately nine hundred words".
+const UNSPOKEN = /^(TITLE|INTRODUCER|WORD\s*COUNT)/i;
+
+function toNarration(text) {
+  return parseSpeech(text)
+    .filter(sec => !UNSPOKEN.test(sec.label || ''))
+    .map(sec => sec.body)
+    .join('\n\n')
+    .replace(/\[[^\]]*\]/g, ' ')     // [stage directions]
+    .replace(/^\s*>\s?/gm, '')       // pulled-quote markers
+    .replace(/[*_`#]/g, '')          // stray markdown
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function renderTts() {
   const el = document.getElementById('panelTts');
   if (!el) return;
@@ -1017,13 +1100,143 @@ function renderTts() {
              </div>`
           : `<div class="field-hint">No voices on this ElevenLabs account.</div>`)
       : `<div class="field-hint">Load your ElevenLabs voices to narrate this speech.</div>`}
-    ${state.audioUrl ? `<audio class="tts-audio" controls src="${state.audioUrl}"></audio>` : ''}
-    ${state.ttsErr ? `<div class="tool-error">${escHtml(state.ttsErr)}</div>` : ''}
+    <div id="ttsPlayer"></div>
+    <div class="tool-error" id="ttsErr" ${state.ttsErr ? '' : 'hidden'}>${escHtml(state.ttsErr)}</div>
   </div>`;
+  mountPlayer();
+}
+
+// Writes into the existing panel rather than re-rendering it: a re-render
+// rebuilds the player, which would restart a narration that is mid-sentence.
+function showTtsError(msg) {
+  state.ttsErr = msg;
+  const el = document.getElementById('ttsErr');
+  if (el) { el.textContent = msg; el.hidden = !msg; } else { renderTts(); }
+}
+
+function fmtTime(s) {
+  if (!Number.isFinite(s) || s < 0) return '0:00';
+  const m = Math.floor(s / 60);
+  return `${m}:${String(Math.floor(s - m * 60)).padStart(2, '0')}`;
+}
+
+/**
+ * A clip whose length the browser does not know cannot be scrubbed — the bar
+ * has no scale to map a drag onto, and duration reads Infinity. Serving a
+ * Content-Length fixes the common case; MP3s without a VBR header still need
+ * this nudge: seek past the end, and the browser resolves the real duration.
+ */
+function resolveDuration(audio) {
+  if (Number.isFinite(audio.duration) && audio.duration > 0) return;
+  const onChange = () => {
+    if (!Number.isFinite(audio.duration)) return;
+    audio.removeEventListener('durationchange', onChange);
+    audio.currentTime = 0;
+    paintPlayer();
+  };
+  audio.addEventListener('durationchange', onChange);
+  try { audio.currentTime = 1e101; } catch (e) { /* some browsers throw; the bar just stays disabled */ }
+}
+
+// Built once per clip and left alone afterwards. Re-rendering the panel while
+// a narration is playing would stop it mid-sentence.
+function mountPlayer() {
+  const host = document.getElementById('ttsPlayer');
+  if (!host) return;
+  if (!state.audioUrl) { host.innerHTML = ''; return; }
+  if (host.dataset.src === state.audioUrl) return;
+
+  host.dataset.src = state.audioUrl;
+  host.innerHTML = `
+    <div class="tts-player">
+      <button class="tts-btn" id="ttsBack" title="Back 10 seconds" aria-label="Back 10 seconds">−10</button>
+      <button class="tts-btn primary" id="ttsToggle" aria-label="Play">▶</button>
+      <button class="tts-btn" id="ttsFwd" title="Forward 10 seconds" aria-label="Forward 10 seconds">+10</button>
+      <span class="tts-time" id="ttsCur">0:00</span>
+      <input class="tts-seek" id="ttsSeek" type="range" min="0" max="1000" value="0" step="1"
+             aria-label="Seek" disabled>
+      <span class="tts-time" id="ttsDur">0:00</span>
+      <audio id="ttsAudio" preload="metadata" src="${state.audioUrl}"></audio>
+    </div>`;
+
+  const audio = document.getElementById('ttsAudio');
+  const seek = document.getElementById('ttsSeek');
+  const toggle = document.getElementById('ttsToggle');
+  let scrubbing = false;
+
+  audio.addEventListener('loadedmetadata', () => { resolveDuration(audio); paintPlayer(); });
+  audio.addEventListener('timeupdate', () => { if (!scrubbing) paintPlayer(); });
+  audio.addEventListener('play', paintPlayer);
+  audio.addEventListener('pause', paintPlayer);
+  audio.addEventListener('ended', () => { audio.currentTime = 0; paintPlayer(); });
+
+  // Without this a decode failure is silent — the speaker presses play and
+  // simply nothing happens, with no way to tell whether it is still loading.
+  // The URL is dropped as well as reported: leaving it would re-mount a player
+  // on the same bad clip, which errors again, which re-mounts — a loop.
+  audio.addEventListener('error', () => {
+    if (state.audioUrl) { URL.revokeObjectURL(state.audioUrl); state.audioUrl = null; }
+    state.ttsErr = 'That narration could not be played — the audio came back damaged. Narrate again.';
+    renderTts();
+  });
+
+  toggle.addEventListener('click', () => {
+    if (audio.paused) {
+      // play() rejects when the browser blocks autoplay or the clip is bad.
+      audio.play().catch(e => showTtsError(`Playback was blocked: ${e.message}`));
+    } else {
+      audio.pause();
+    }
+  });
+
+  document.getElementById('ttsBack').addEventListener('click', () => {
+    audio.currentTime = Math.max(0, audio.currentTime - 10);
+  });
+  document.getElementById('ttsFwd').addEventListener('click', () => {
+    if (Number.isFinite(audio.duration)) {
+      audio.currentTime = Math.min(audio.duration, audio.currentTime + 10);
+    }
+  });
+
+  seek.addEventListener('input', () => {
+    scrubbing = true;
+    if (Number.isFinite(audio.duration)) {
+      document.getElementById('ttsCur').textContent =
+        fmtTime((seek.value / 1000) * audio.duration);
+    }
+  });
+  seek.addEventListener('change', () => {
+    if (Number.isFinite(audio.duration)) {
+      audio.currentTime = (seek.value / 1000) * audio.duration;
+    }
+    scrubbing = false;
+  });
+
+  paintPlayer();
+}
+
+function paintPlayer() {
+  const audio = document.getElementById('ttsAudio');
+  if (!audio) return;
+  const seek = document.getElementById('ttsSeek');
+  const known = Number.isFinite(audio.duration) && audio.duration > 0;
+
+  document.getElementById('ttsToggle').textContent = audio.paused ? '▶' : '❚❚';
+  document.getElementById('ttsToggle').setAttribute('aria-label', audio.paused ? 'Play' : 'Pause');
+  document.getElementById('ttsCur').textContent = fmtTime(audio.currentTime);
+  document.getElementById('ttsDur').textContent = known ? fmtTime(audio.duration) : '--:--';
+
+  seek.disabled = !known;
+  if (known) seek.value = Math.round((audio.currentTime / audio.duration) * 1000);
 }
 
 async function runTts() {
-  const text = currentSpeech();
+  // Always narrate from the script, whichever tab is open. The teleprompter
+  // view has already had its headers stripped, which leaves the introducer's
+  // "Pathway: ... Level: ..." card as unlabelled prose that toNarration can no
+  // longer recognise — and the voice reads it out as if it were the speech.
+  const script = state.speeches?.[state.currentLang]?.directed || '';
+  const text = toNarration(script);
   if (!text) return;
   state.ttsBusy = true; state.ttsErr = ''; renderTts();
   try {
@@ -1035,10 +1248,12 @@ async function runTts() {
       const r = await res.json().catch(() => ({}));
       throw new Error(r.error || `Narration failed (${res.status})`);
     }
+    const blob = await res.blob();
+    if (!blob.size) throw new Error('Narration came back empty.');
     // Hold the audio as a blob so the player can seek and replay without
     // re-billing a second synthesis.
     if (state.audioUrl) URL.revokeObjectURL(state.audioUrl);
-    state.audioUrl = URL.createObjectURL(await res.blob());
+    state.audioUrl = URL.createObjectURL(blob);
   } catch (e) { state.ttsErr = e.message; }
   state.ttsBusy = false; renderTts();
 }
@@ -1217,7 +1432,10 @@ async function saveSpeech() {
 }
 
 function startNew() {
-  state.speeches = null; state.step = 1; state.formData = {}; state.checklist = new Array(8).fill(false);
+  // Custom instructions survive: they describe the speaker, not the speech.
+  state.speeches = null; state.step = 1;
+  state.formData = { customInstructions: readCustomInstructions() };
+  state.checklist = new Array(8).fill(false);
   state.selectedLangs = ['EN']; state.saveStatus = ''; state.dashTab = 'new';
   state.suggestions = null; state.suggestErr = ''; state.usedTitle = -1; state.usedIntro = -1;
   state.proofread = null; state.proofErr = ''; state.refineErr = ''; state.ttsErr = '';
