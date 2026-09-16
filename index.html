@@ -365,6 +365,7 @@ window.addEventListener('DOMContentLoaded', () => {
   state.tokens = { free: true };
   state.formData.customInstructions = readCustomInstructions();
   state.formData.speaker = readSpeakers()[0];
+  state.formData.pronouns = pronounsFor(state.formData.speaker);
   render();
 });
 
@@ -560,11 +561,20 @@ function getStepContent() {
           <div>
             <label>Your Name</label>
             <input id="f_speaker" type="text" list="speakerNames" autocomplete="name"
-              placeholder="How the introducer should announce you" value="${escHtml(d.speaker || '')}">
+              placeholder="How the introducer should announce you" value="${escHtml(d.speaker || '')}"
+              onchange="onSpeakerChanged(this.value)">
             <datalist id="speakerNames">
               ${readSpeakers().map(n => `<option value="${escHtml(n)}"></option>`).join('')}
             </datalist>
             ${readSpeakers().length > 1 ? `<div class="field-hint">${readSpeakers().length} saved names — start typing to pick one.</div>` : ''}
+            <label style="margin-top:14px">Pronouns <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional)</span></label>
+            <input id="f_pronouns" type="text" list="pronounOptions" maxlength="40"
+              placeholder="e.g. she/her" value="${escHtml(d.pronouns || '')}"
+              onchange="onPronounsEdited(this.value)">
+            <datalist id="pronounOptions">
+              ${PRONOUN_SUGGESTIONS.map(p => `<option value="${escHtml(p)}"></option>`).join('')}
+            </datalist>
+            <div class="field-hint">Used in the introducer's card, which is read aloud about you. Left blank, the card avoids pronouns entirely rather than guessing.</div>
           </div>
           <div><label>Club Name</label><input id="f_club" type="text" placeholder="CEO Toastmasters" value="${d.club||'CEO Toastmasters'}"></div>
         </div>
@@ -660,6 +670,54 @@ function rememberSpeaker(name) {
   } catch (e) { /* private mode: this session only */ }
 }
 
+// Pronouns belong to the person, not the speech, so they are remembered
+// against the name rather than on their own. Pick a saved speaker and their
+// pronouns come with them.
+const PRONOUN_KEY = 'va_speaker_pronouns';
+const PRONOUN_SUGGESTIONS = ['she/her', 'he/him', 'they/them', 'she/they', 'he/they'];
+
+function readPronounMap() {
+  try {
+    const m = JSON.parse(localStorage.getItem(PRONOUN_KEY) || '{}');
+    return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
+  } catch (e) { return {}; }
+}
+
+/** Pronouns last used for this name, matched the way names are deduplicated. */
+function pronounsFor(name) {
+  return readPronounMap()[String(name || '').trim().toLowerCase()] || '';
+}
+
+/**
+ * Switching to a speaker we know brings their pronouns along. An unknown name
+ * leaves the field alone rather than clearing it — someone who typed pronouns
+ * before finishing the name should not lose them to a blur event.
+ */
+function onSpeakerChanged(name) {
+  collectFormData();
+  const known = pronounsFor(name);
+  if (!known) return;
+  state.formData.pronouns = known;
+  const el = document.getElementById('f_pronouns');
+  if (el) el.value = known;
+}
+
+function onPronounsEdited(value) {
+  collectFormData();
+  rememberPronouns(state.formData.speaker, value);
+}
+
+function rememberPronouns(name, value) {
+  const key = String(name || '').trim().toLowerCase();
+  if (!key) return;
+  const map = readPronounMap();
+  const clean = String(value || '').trim();
+  // An emptied field is a deliberate "stop using these", so record the
+  // clearing rather than silently keeping the old value.
+  if (clean) map[key] = clean; else delete map[key];
+  try { localStorage.setItem(PRONOUN_KEY, JSON.stringify(map)); } catch (e) { /* private mode */ }
+}
+
 // Custom instructions are standing preferences — how this speaker wants to be
 // written for — not a note about one speech, so they outlive the form.
 const CUSTOM_KEY = 'va_custom_instructions';
@@ -674,7 +732,7 @@ function saveCustomInstructions(value) {
 }
 
 function collectFormData() {
-  const fields = ['duration','humorTone','wordEN','wordFR','wordES','wordHT','pathway','level','project','club','speaker','titleEN','titleFR','titleES','titleHT','hook','context','premise','centralMessage','evaluatorName','evaluatorClub','deliveryDate','customInstructions'];
+  const fields = ['duration','humorTone','wordEN','wordFR','wordES','wordHT','pathway','level','project','club','speaker','titleEN','titleFR','titleES','titleHT','hook','context','premise','centralMessage','evaluatorName','evaluatorClub','deliveryDate','customInstructions','pronouns'];
   fields.forEach(id => {
     const el = document.getElementById('f_'+id);
     if (el) state.formData[id] = el.value;
@@ -721,6 +779,7 @@ async function generateSpeech() {
   // Saved on use rather than on every keystroke, so a half-typed name never
   // lands in the list.
   rememberSpeaker(state.formData.speaker);
+  rememberPronouns(state.formData.speaker, state.formData.pronouns);
   const langs = state.selectedLangs.slice();
   const panel = document.getElementById('panelNew');
   panel.innerHTML = `<div class="generating">
@@ -786,6 +845,7 @@ function buildPayload(code) {
     story_line: d.premise || '',
     central_message: d.centralMessage || d.context || '',
     speaker: d.speaker || '',
+    pronouns: (d.pronouns || '').trim(),
     word_of_day: d['word' + code] || d.wordEN || '',
     evaluator: {
       name: d.evaluatorName || '',
@@ -1477,6 +1537,7 @@ function startNew() {
   state.formData = {
     customInstructions: readCustomInstructions(),
     speaker: readSpeakers()[0],
+    pronouns: pronounsFor(readSpeakers()[0]),
   };
   state.checklist = new Array(8).fill(false);
   state.selectedLangs = ['EN']; state.saveStatus = ''; state.dashTab = 'new';

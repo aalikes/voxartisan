@@ -43,6 +43,10 @@ function buildGeneratePrompt(data) {
   // this tool produced belong to one person.
   const speaker             = (data.speaker || '').trim() || 'the speaker';
 
+  // The speaker's pronouns, for the introducer's card — the one section written
+  // *about* the speaker rather than spoken by them, and read aloud to a room.
+  const pronouns            = (data.pronouns || '').trim().slice(0, 40);
+
   // Toastmasters clubs give a Word of the Day that speakers are expected to
   // work in naturally rather than announce.
   const word_of_day         = (data.word_of_day || '').trim();
@@ -75,6 +79,13 @@ function buildGeneratePrompt(data) {
   const evaluator_line      = evaluator.name
     ? `\n- Evaluator: ${evaluator.name}${evaluator.club ? ` (${evaluator.club})` : ''}${evaluator.date ? `, delivering ${evaluator.date}` : ''}`
     : "";
+
+  // Given pronouns, use them. Given none, keep the old avoidance — writing
+  // around a speaker's pronouns is clumsy, but guessing them in a card read
+  // aloud to a room is worse.
+  const pronoun_rule        = pronouns
+    ? `${speaker} uses ${pronouns} — use those pronouns naturally throughout this card. Do not state them as a fact about ${speaker}; just use them.`
+    : `Do not assume the speaker's gender — avoid he/she/his/her throughout this card.`;
 
   const checklist_note      = checklist.length
     ? `\n\n✅ THE SPEAKER HAS COMMITTED TO THESE. Treat each as a hard requirement, not a preference:\n${checklist.map(c => `- ${c}`).join('\n')}`
@@ -133,7 +144,7 @@ A card written for the Toastmaster or evaluator who will introduce ${speaker} to
   Time: ${duration || "[Not specified]"}
   Title: [insert the exact title you generated above]
 
-After those five lines, write 2–3 sentences in third person ("Our next speaker is ${speaker}..."). Be intentionally vague about the speech's content — build intrigue without revealing the theme or argument. End with exactly: "The title of the speech is '[title]'. Please welcome, ${speaker}!" This section is read by the introducer, not by ${speaker}. Do not assume the speaker's gender — avoid he/she/his/her throughout this card.
+After those five lines, write 2–3 sentences in third person ("Our next speaker is ${speaker}..."). Be intentionally vague about the speech's content — build intrigue without revealing the theme or argument. End with exactly: "The title of the speech is '[title]'. Please welcome, ${speaker}!" This section is read by the introducer, not by ${speaker}. ${pronoun_rule}
 
 ## HOOK
 The VERY FIRST WORDS ${speaker} delivers on stage — no salutation before this. Use the "${intro_style}" technique to grab the room in the first 30 seconds.
