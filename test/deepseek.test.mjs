@@ -232,6 +232,50 @@ describe('POST /api/generate', () => {
     }
   });
 
+  test('pronouns, when given, are used rather than avoided', async () => {
+    // The introducer's card is the one section written *about* the speaker and
+    // read aloud to a room, so it is the only place pronouns belong.
+    stub(completion(SPEECH));
+    await generatePost({
+      request: new Request('https://voxartisan.test/api/generate', {
+        method: 'POST',
+        body: JSON.stringify({ ...payload, pronouns: 'she/her' }),
+      }),
+      env: env(),
+    });
+
+    const prompt = sent.body.messages[1].content;
+    assert.match(prompt, /uses she\/her/);
+    assert.doesNotMatch(prompt, /avoid he\/she/,
+      'the avoidance rule must give way once real pronouns exist');
+  });
+
+  test('without pronouns the card still avoids guessing', async () => {
+    // Writing around a speaker's pronouns is clumsy; guessing them in a card
+    // read aloud to a room is worse. Blank must keep the old behaviour.
+    stub(completion(SPEECH));
+    await post(env());
+
+    const prompt = sent.body.messages[1].content;
+    assert.match(prompt, /avoid he\/she\/his\/her/);
+    assert.doesNotMatch(prompt, /\buses\s+\S+\/\S+/,
+      'no pronoun instruction should appear when none were given');
+  });
+
+  test('a pasted essay cannot ride in through the pronouns field', async () => {
+    stub(completion(SPEECH));
+    await generatePost({
+      request: new Request('https://voxartisan.test/api/generate', {
+        method: 'POST',
+        body: JSON.stringify({ ...payload, pronouns: 'x'.repeat(500) }),
+      }),
+      env: env(),
+    });
+
+    assert.ok(/uses x{40}[^x]/.test(sent.body.messages[1].content),
+      'pronouns should be capped at 40 characters');
+  });
+
   test('no speaker name is hardcoded', async () => {
     // The prompt named one club's member in four places until #6.
     stub(completion(SPEECH));
