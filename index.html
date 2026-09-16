@@ -460,16 +460,29 @@ async function loadSpeech(speechId) {
     const res = await apiFetch(`/api/speeches/${speechId}`);
     const data = await res.json();
     if (data.form_data && typeof data.form_data === 'object') state.formData = data.form_data;
-    if (data.all_langs && typeof data.all_langs === 'object') {
-      state.speeches = data.all_langs;
-      state.selectedLangs = Object.keys(data.all_langs).filter(k => k !== 'email');
-    }
-    if (data.text && !state.speeches) {
-      // Fallback: treat text as direct speech
+
+    // A saved speech has had two shapes: `text` alone came first, `all_langs`
+    // arrived with multi-language support. An empty all_langs is still an
+    // object, so testing it for truthiness alone let old rows through as {},
+    // which left the fallback below unreachable: the speech was still in D1 but
+    // the page rendered blank. Require an actual language before trusting it.
+    const langs = (data.all_langs && typeof data.all_langs === 'object') ? data.all_langs : {};
+    const names = Object.keys(langs).filter(k => k !== 'email');
+    if (names.length) {
+      state.speeches = langs;
+      state.selectedLangs = names;
+    } else if (data.text) {
       state.speeches = { EN: { directed: data.text, teleprompter: data.text } };
       state.selectedLangs = ['EN'];
+      if (langs.email) state.speeches.email = langs.email;
+    } else {
+      alert('That speech has no text saved. Nothing was changed or deleted.');
+      return;
     }
     state.currentLang = state.selectedLangs[0] || 'EN';
+    // Opening a past speech ends any in-progress edit, or render() would show
+    // the form instead of the speech just loaded.
+    state.editingAnswers = false;
     render();
   } catch(e) { alert('Failed to load speech.'); }
 }
