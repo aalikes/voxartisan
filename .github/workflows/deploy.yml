@@ -37,6 +37,35 @@ jobs:
       # leaves exactly one secret to configure, which is one fewer thing to
       # get wrong: the first run of this workflow failed because both secrets
       # resolved empty.
+      # Six runs have failed with CLOUDFLARE_API_TOKEN resolving empty while
+      # the account id resolves fine, so the workflow is reaching the secrets
+      # context — the value just isn't in the place this references. This
+      # reports which of the likely places it actually landed. It prints
+      # lengths only, never values, and Actions masks secrets in logs anyway.
+      - name: Check credentials
+        env:
+          AS_SECRET: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          AS_VARIABLE: ${{ vars.CLOUDFLARE_API_TOKEN }}
+          ALT_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          ALT_CF_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          ALT_PAGES_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+        run: |
+          echo "secrets.CLOUDFLARE_API_TOKEN     length ${#AS_SECRET}"
+          echo "vars.CLOUDFLARE_API_TOKEN        length ${#AS_VARIABLE}"
+          echo "secrets.CLOUDFLARE_API_KEY       length ${#ALT_API_KEY}"
+          echo "secrets.CF_API_TOKEN             length ${#ALT_CF_TOKEN}"
+          echo "secrets.CLOUDFLARE_PAGES_TOKEN   length ${#ALT_PAGES_TOKEN}"
+          if [ -n "$AS_SECRET" ]; then
+            echo "Token found — deploying."
+            exit 0
+          fi
+          if [ -n "$AS_VARIABLE" ]; then
+            echo "::error::The token is stored as an Actions *variable*, not a secret. Variables are plaintext and readable by anyone who can see the repo. Delete it from the Variables tab, rotate the token in Cloudflare, and add the new one under Secrets."
+          else
+            echo "::error::secrets.CLOUDFLARE_API_TOKEN is empty. It needs to be a Repository secret under Settings > Secrets and variables > Actions > Secrets — not an Environment secret (this job declares no environment), not the Variables tab, and not the Dependabot or Codespaces tab."
+          fi
+          exit 1
+
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
